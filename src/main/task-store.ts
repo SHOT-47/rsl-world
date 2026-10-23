@@ -81,7 +81,7 @@ export class TaskStore {
     const files = migrations.length ? migrations.map(name => join(schemaDir, name)) : [schemaPath]
     for (const file of files) {
       const fileName = basename(file)
-      const versionMatch = /^\d+_/.exec(fileName)
+      const versionMatch = /^(\d+)_/.exec(fileName)
       const version = versionMatch ? Number(versionMatch[1]) : Number.NaN
       const versionRow = (() => {
         try { return this.database.prepare("SELECT value FROM schema_meta WHERE key='schema_version'").get() as { value: string } | undefined }
