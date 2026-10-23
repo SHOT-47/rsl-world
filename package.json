@@ -12,7 +12,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test tests/*.test.mjs && node --experimental-strip-types --test tests/*.test.ts && python tests/test_schema.py && python resources/reverse-skill-library/validation/check_library.py && python -m unittest discover -s resources/reverse-skill-library/validation -p 'test_*.py' -v",
+    "test": "node --test tests/*.test.mjs && node --experimental-strip-types --test tests/*.test.ts && python tests/test_schema.py && python resources/reverse-skill-library/validation/check_library.py && python resources/reverse-skill-library/validation/test_library.py",
     "test:static": "python scripts/verify_structure.py",
     "validate:rsl": "python resources/reverse-skill-library/validation/check_library.py",
     "validate:rsl:tests": "python -m unittest discover -s resources/reverse-skill-library/validation -p 'test_*.py' -v",
