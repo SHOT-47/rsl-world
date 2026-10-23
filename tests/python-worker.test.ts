@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { PythonWorkerRunner } from '../src/main/runtime/python-worker.ts'
@@ -22,7 +22,13 @@ function runner(workspace: string, extra: Record<string, unknown> = {}) {
   return new PythonWorkerRunner({
     pythonExecutable: PYTHON,
     workerScriptPath: WORKER,
-    isWorkspaceAllowed: (candidate) => resolve(candidate) === resolve(workspace),
+    isWorkspaceAllowed: async (candidate) => {
+      // Windows realpath may return an 8.3 path and casing that differs from the selected path.
+      const [canonicalCandidate, canonicalWorkspace] = await Promise.all([realpath(candidate), realpath(workspace)])
+      return process.platform === 'win32'
+        ? canonicalCandidate.toLocaleLowerCase('en-US') === canonicalWorkspace.toLocaleLowerCase('en-US')
+        : canonicalCandidate === canonicalWorkspace
+    },
     ...extra
   })
 }
