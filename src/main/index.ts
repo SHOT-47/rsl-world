@@ -311,7 +311,7 @@ function registerIpcHandlers(): void {
         properties: ['openDirectory', 'createDirectory']
       })
       if (selection.canceled || selection.filePaths.length === 0) return ok({ exported: false, harness: harnessInput, destination: null, summary: 'Export cancelled; no files were changed.', details: [] })
-      const destination = await realpath(selection.filePaths[0])
+      const destination = await realpath(selection.filePaths[0]!)
       const answer = await dialog.showMessageBox(mainWindow!, {
         type: 'warning',
         title: 'Review RSL skill export',
@@ -521,7 +521,7 @@ async function requestSafeQuit(): Promise<void> {
     safeToClose = agentRuntime ? await agentRuntime.cancelAndWait(8_000) : true
     if (!safeToClose) {
       focusWindow()
-      await dialog.showMessageBox(mainWindow ?? undefined, {
+      await dialog.showMessageBox(mainWindow!, {
         type: 'error',
         title: 'Tasks are still stopping',
         message: 'Workbench could not confirm a safe shutdown yet.',
