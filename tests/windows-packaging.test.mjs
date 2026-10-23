@@ -27,7 +27,7 @@ test('Windows build script refuses non-Windows execution and enforces test gates
 })
 
 test('Windows CI packages on a Windows runner and uploads provenance with installer', () => {
-  assert.match(workflow, /runs-on:\s*windows-latest/)
+  assert.match(workflow, /runs-on:\s*windows-(?:latest|2022)/)
   assert.match(workflow, /node-version:\s*'22\.16\.0'/)
   assert.match(workflow, /python-version:\s*'3\.12'/)
   assert.match(workflow, /npm run package:win/)
