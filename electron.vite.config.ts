@@ -11,7 +11,17 @@ export default defineConfig({
   preload: {
     plugins: [externalizeDepsPlugin()],
     resolve: { alias: { '@shared': resolve('src/shared') } },
-    build: { sourcemap: process.env.NODE_ENV !== 'production' }
+    // main/index.ts resolves this exact path in development and in app.asar.
+    // Pin the artifact name instead of relying on package.json "type" inference.
+    build: {
+      sourcemap: process.env.NODE_ENV !== 'production',
+      rollupOptions: {
+        output: {
+          entryFileNames: 'index.js',
+          chunkFileNames: '[name]-[hash].js'
+        }
+      }
+    }
   },
   renderer: {
     root: resolve('src/renderer'),
