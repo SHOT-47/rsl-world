@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdirSync, readFileSync, readdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { sanitizeJson, redactSecrets } from './redaction.ts'
 import type { ApprovalPreview, ProposedOperation } from './policy.ts'
 import { createApprovalPreview, hashOperation } from './policy.ts'
@@ -80,8 +80,9 @@ export class TaskStore {
       .sort((a, b) => Number(a.split('_', 1)[0]) - Number(b.split('_', 1)[0]))
     const files = migrations.length ? migrations.map(name => join(schemaDir, name)) : [schemaPath]
     for (const file of files) {
-      const fileName = file.split(/[\/]/).at(-1) ?? file
-      const version = Number(fileName.split('_', 1)[0])
+      const fileName = basename(file)
+      const versionMatch = /^(\\d+)_/.exec(fileName)
+      const version = versionMatch ? Number(versionMatch[1]) : Number.NaN
       const versionRow = (() => {
         try { return this.database.prepare("SELECT value FROM schema_meta WHERE key='schema_version'").get() as { value: string } | undefined }
         catch { return undefined }
