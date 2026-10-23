@@ -109,13 +109,12 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          if (Test-Path 'package-lock.json') {
-            npm ci --no-audit --no-fund
-          } else {
-            npm install --no-audit --no-fund
-          }
-          if ($LASTEXITCODE -ne 0) { throw "npm dependency installation failed with exit code $LASTEXITCODE." }
+          # Refresh only the lockfile from exact/pinned manifest versions, then install cleanly from that lockfile.
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw "npm lockfile refresh failed with exit code $LASTEXITCODE." }
           if (!(Test-Path 'package-lock.json')) { throw 'npm did not generate package-lock.json.' }
+          npm ci --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw "npm ci failed with exit code $LASTEXITCODE." }
 
       - name: Commit extracted source and lockfile to the repository
         id: commit_sources
