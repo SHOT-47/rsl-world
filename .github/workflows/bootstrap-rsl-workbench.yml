@@ -5,6 +5,7 @@ name: Bootstrap RSL Workbench and build Windows NSIS installer
 # RSL contract tests also run directly to avoid unittest discovery treating the hyphenated library folder as an empty suite.
 # Static policy checks accept the equivalent direct-test invocations used by the Windows runner.
 # Packaging tests support both the pinned VS2022 runner and the floating latest Windows image.
+# The NSIS command uses --publish never; Actions artifacts are the delivery mechanism, not GitHub Releases.
 
 on:
   workflow_dispatch:
