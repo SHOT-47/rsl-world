@@ -1,6 +1,7 @@
 name: Bootstrap RSL Workbench and build Windows NSIS installer
 # This workflow always builds the current committed source after verifying the reviewed bootstrap archive.
 # Cross-platform regression fixes are validated on the hosted Windows runner before NSIS packaging.
+# Schema tests run as a direct Python script because unittest discovery can report zero tests in the hosted Windows layout.
 
 on:
   workflow_dispatch:
