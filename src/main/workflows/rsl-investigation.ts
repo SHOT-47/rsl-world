@@ -369,7 +369,7 @@ function inferFormat(title: string, prompt: string, files: string[]): { format: 
   if (exactUnique.length === 1) return { format: exactUnique[0] ?? null, basis: 'A supported file extension was explicitly named in the task title/prompt; content was not inspected.', ambiguous: false }
   if (exactUnique.length > 1) return { format: null, basis: 'The task text contains multiple supported file-format hints; routing was not guessed.', ambiguous: true }
   const discovered = [...new Set(files.map(path => EXTENSION_TOKENS[path.split('.').at(-1)?.toLowerCase() ?? '']).filter((token): token is string => Boolean(token)))]
-  if (discovered.length === 1) return { format: discovered[0], basis: 'One supported file-format family was found by bounded filename-only inventory; file contents were not inspected.', ambiguous: false }
+  if (discovered.length === 1) return { format: discovered[0] ?? null, basis: 'One supported file-format family was found by bounded filename-only inventory; file contents were not inspected.', ambiguous: false }
   return { format: null, basis: discovered.length > 1 ? 'Multiple supported file-format families were found in the project; target identity is ambiguous.' : 'No supported format hint was found in task text or bounded filename-only inventory.', ambiguous: discovered.length > 1 }
 }
 
