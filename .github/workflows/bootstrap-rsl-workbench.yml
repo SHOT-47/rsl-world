@@ -3,6 +3,7 @@ name: Bootstrap RSL Workbench and build Windows NSIS installer
 # Cross-platform regression fixes are validated on the hosted Windows runner before NSIS packaging.
 # Schema tests run as a direct Python script because unittest discovery can report zero tests in the hosted Windows layout.
 # RSL contract tests also run directly to avoid unittest discovery treating the hyphenated library folder as an empty suite.
+# Static policy checks accept the equivalent direct-test invocations used by the Windows runner.
 
 on:
   workflow_dispatch:
