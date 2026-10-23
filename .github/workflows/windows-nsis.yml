@@ -3,6 +3,8 @@ name: Windows NSIS installer
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
 
