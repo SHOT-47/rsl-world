@@ -455,7 +455,7 @@ Provider diagnostics will send a request to this configured endpoint only when y
         properties: ['openFile']
       })
       if (selection.canceled || selection.filePaths.length === 0) return ok(null)
-      const selected = await realpath(selection.filePaths[0])
+      const selected = await realpath(selection.filePaths[0]!)
       if (!isWithinWorkspace(selected, root)) throw new Error('Evidence inspection is limited to files inside the selected project folder.')
       const relPath = relative(root, selected).split(sep).join('/')
       const response = await evidenceWorker().run({ operation: 'inspect_file', workspaceRoot: root, path: relPath })
@@ -536,7 +536,7 @@ async function requestSafeQuit(): Promise<void> {
     app.quit()
   } catch {
     focusWindow()
-    await dialog.showMessageBox(mainWindow ?? undefined, {
+    await dialog.showMessageBox(mainWindow!, {
       type: 'error', title: 'Shutdown deferred',
       message: 'Workbench could not verify that tasks stopped safely.',
       detail: 'The local database remains open. Inspect task status and try closing again.',
