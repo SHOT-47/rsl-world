@@ -627,8 +627,20 @@ app.whenReady().then(async () => {
   await createWindow()
   app.on('activate', async () => { if (BrowserWindow.getAllWindows().length === 0) await createWindow() })
 }).catch((error: unknown) => {
-  console.error('Startup failed:', error instanceof Error ? error.message : 'unknown error')
-  app.quit()
+  const detail = error instanceof Error ? error.stack ?? error.message : String(error)
+  console.error('Startup failed:', detail)
+  // Packaged launches have no attached terminal, so a console-only error is invisible.
+  // Show a native diagnostic before quitting and preserve the detailed stack in the log.
+  const logPath = join(app.getPath('userData'), 'startup-error.log')
+  void import('node:fs/promises').then(({ appendFile }) =>
+    appendFile(logPath, `[${new Date().toISOString()}] Startup failed\\n${detail}\\n\\n`, 'utf8')
+  ).catch(() => undefined).finally(() => {
+    dialog.showErrorBox(
+      'RSL Workbench could not start',
+      `Startup failed. No project work was started.\\n\\nDetails: ${error instanceof Error ? error.message : String(error)}\\n\\nA diagnostic log may be available at:\\n${logPath}`
+    )
+    app.quit()
+  })
 })
 
 app.on('web-contents-created', (_event, contents) => {
