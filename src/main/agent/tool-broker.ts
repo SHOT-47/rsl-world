@@ -182,7 +182,8 @@ export class ToolBroker {
           if (!isTextBuffer(buffer)) continue
           const lines = buffer.toString('utf8').split(/\r?\n/)
           for (let i = 0; i < lines.length && matches.length < MAX_SEARCH_MATCHES; i++) {
-            if (lines[i].toLowerCase().includes(query)) matches.push({ path: rel, line: i + 1, snippet: redactSecrets(lines[i].slice(0, 500)).value })
+            const line = lines[i]
+            if (line?.toLowerCase().includes(query)) matches.push({ path: rel, line: i + 1, snippet: redactSecrets(line.slice(0, 500)).value })
           }
         }
       }
@@ -342,8 +343,8 @@ export class ToolBroker {
         if (bytes > MAX_COMMAND_OUTPUT) { killedForLimit = true; child.kill(); return current }
         return current + chunk.toString('utf8')
       }
-      child.stdout.on('data', (chunk: Buffer) => { stdout = append(stdout, chunk) })
-      child.stderr.on('data', (chunk: Buffer) => { stderr = append(stderr, chunk) })
+      child.stdout!.on('data', (chunk: Buffer) => { stdout = append(stdout, chunk) })
+      child.stderr!.on('data', (chunk: Buffer) => { stderr = append(stderr, chunk) })
       child.once('error', error => { if (finished) return; finished = true; clearTimeout(timer); this.options.signal.removeEventListener('abort', onAbort); void Promise.resolve(this.options.onAfterSideEffect(didSpawn ? 'possible' : 'known_not_started', 'Process launch error.')).catch(() => undefined); rejectPromise(new Error(`Could not launch process: ${error.message}`)) })
       child.once('close', code => {
         if (finished) return
