@@ -78,18 +78,22 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $archive = '${{ steps.source.outputs.archive }}'
-          $source = Join-Path $PWD.Path '.rsl-workbench-source'
-          if (Test-Path $source) { Remove-Item -LiteralPath $source -Recurse -Force }
-          New-Item -ItemType Directory -Path $source | Out-Null
-          Expand-Archive -LiteralPath $archive -DestinationPath $source -Force
-          if (!(Test-Path (Join-Path $source 'package.json'))) { throw 'package.json missing after extraction.' }
-          & robocopy $source $PWD.Path /E /COPY:DAT /DCOPY:DAT /R:2 /W:1 /XD node_modules release .git
-          $copyCode = $LASTEXITCODE
-          # Robocopy codes 0-7 are success/warning outcomes; clear the native exit code so pwsh does not mark this step failed at script end.
-          if ($copyCode -gt 7) { throw "Source copy failed with robocopy code $copyCode." }
-          $global:LASTEXITCODE = 0
-          Remove-Item -LiteralPath $source -Recurse -Force
-          Write-Host 'Source files expanded into the repository root.'
+          if (Test-Path 'package.json') {
+            Write-Host 'Source already exists in the repository; preserving committed fixes and lockfile.'
+          } else {
+            $source = Join-Path $PWD.Path '.rsl-workbench-source'
+            if (Test-Path $source) { Remove-Item -LiteralPath $source -Recurse -Force }
+            New-Item -ItemType Directory -Path $source | Out-Null
+            Expand-Archive -LiteralPath $archive -DestinationPath $source -Force
+            if (!(Test-Path (Join-Path $source 'package.json'))) { throw 'package.json missing after extraction.' }
+            & robocopy $source $PWD.Path /E /COPY:DAT /DCOPY:DAT /R:2 /W:1 /XD node_modules release .git
+            $copyCode = $LASTEXITCODE
+            # Robocopy codes 0-7 are success/warning outcomes; clear the native exit code so pwsh does not mark this step failed at script end.
+            if ($copyCode -gt 7) { throw "Source copy failed with robocopy code $copyCode." }
+            $global:LASTEXITCODE = 0
+            Remove-Item -LiteralPath $source -Recurse -Force
+            Write-Host 'Source files expanded into the repository root.'
+          }
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -100,8 +104,12 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          npm install --no-audit --no-fund
-          if ($LASTEXITCODE -ne 0) { throw "npm install failed with exit code $LASTEXITCODE." }
+          if (Test-Path 'package-lock.json') {
+            npm ci --no-audit --no-fund
+          } else {
+            npm install --no-audit --no-fund
+          }
+          if ($LASTEXITCODE -ne 0) { throw "npm dependency installation failed with exit code $LASTEXITCODE." }
           if (!(Test-Path 'package-lock.json')) { throw 'npm did not generate package-lock.json.' }
 
       - name: Commit extracted source and lockfile to the repository
