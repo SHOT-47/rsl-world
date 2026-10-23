@@ -9,7 +9,7 @@ const workflow = await readFile(new URL('../.github/workflows/windows-nsis.yml',
 const buildGuide = await readFile(new URL('../docs/WINDOWS_BUILD.md', import.meta.url), 'utf8')
 
 test('package metadata targets x64 NSIS and gives native SQLite an unpacked runtime path', () => {
-  assert.match(packageJson.scripts['package:win'], /electron-builder --win nsis --x64$/)
+  assert.match(packageJson.scripts['package:win'], /electron-builder --win nsis --x64 --publish never$/)
   assert.deepEqual(packageJson.build.win.target, ['nsis'])
   assert.equal(packageJson.build.win.icon, 'resources/app.ico')
   assert.ok(packageJson.build.asarUnpack.includes('node_modules/better-sqlite3/**'))
