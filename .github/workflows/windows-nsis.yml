@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   package-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 60
     steps:
       - name: Checkout source
