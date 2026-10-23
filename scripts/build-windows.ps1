@@ -68,7 +68,7 @@ if (-not $SkipTests) {
 Invoke-Checked 'npm' @('run', 'build')
 # NSIS can be generated on Linux too, but native better-sqlite3/Windows lifecycle must be rebuilt
 # and verified for Windows. This script deliberately builds on Windows x64 instead.
-Invoke-Checked 'npx' @('electron-builder', '--win', 'nsis', '--x64')
+Invoke-Checked 'npx' @('electron-builder', '--win', 'nsis', '--x64', '--publish', 'never')
 
 $installer = Get-ChildItem -Path 'release' -Filter '*Setup.exe' -File |
     Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
