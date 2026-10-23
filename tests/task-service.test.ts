@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { TaskService } from '../src/main/task-service.ts'
@@ -30,8 +30,9 @@ async function usingService(fn: (service: TaskService, root: string, store: Fake
 test('project registration canonicalizes a real directory and rejects a relative path', async () => {
   await usingService(async (service, root, store) => {
     const registered = await service.registerProjectRoot(root)
-    assert.equal(registered.root, root)
-    assert.equal(store.hasProject(root), true)
+    const canonicalRoot = await realpath(root)
+    assert.equal(registered.root, canonicalRoot)
+    assert.equal(store.hasProject(canonicalRoot), true)
     await assert.rejects(() => service.registerProjectRoot('relative/path'), /absolute path/)
   })
 })
