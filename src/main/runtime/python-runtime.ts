@@ -42,7 +42,11 @@ export function resolvePythonRuntime(): PythonRuntime {
       errors.push('Python did not return an absolute interpreter path and version.')
       continue
     }
-    const [major, minor] = version.split('.').map(Number)
+    const [major = 0, minor = 0] = version.split('.').map(Number)
+    if (!Number.isFinite(major) || !Number.isFinite(minor)) {
+      errors.push('Python returned an unparseable version string.')
+      continue
+    }
     if (major < 3 || (major === 3 && minor < 10)) {
       errors.push(`Python ${version} is too old; RSL requires Python 3.10 or later.`)
       continue
