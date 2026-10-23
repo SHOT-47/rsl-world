@@ -16,7 +16,7 @@
     "test:static": "python scripts/verify_structure.py",
     "validate:rsl": "python resources/reverse-skill-library/validation/check_library.py",
     "validate:rsl:tests": "python -m unittest discover -s resources/reverse-skill-library/validation -p 'test_*.py' -v",
-    "package:win": "npm run typecheck && npm test && npm run test:syntax && npm run test:static && npm run build && electron-builder --win nsis --x64",
+    "package:win": "npm run typecheck && npm test && npm run test:syntax && npm run test:static && npm run build && electron-builder --win nsis --x64 --publish never",
     "test:runtime": "node --test tests/*.test.mjs && node --experimental-strip-types --test tests/*.test.ts && python -m unittest discover -s tests -p 'test_schema.py' -v",
     "test:rsl": "python resources/reverse-skill-library/validation/check_library.py && python -m unittest discover -s resources/reverse-skill-library/validation -p 'test_*.py' -v",
     "test:syntax": "node scripts/check_typescript_syntax.mjs"
