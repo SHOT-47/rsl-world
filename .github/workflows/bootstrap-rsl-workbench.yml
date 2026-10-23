@@ -193,7 +193,7 @@ jobs:
           Write-Host "Installer: $($installer.FullName)"
           Write-Host "SHA-256: $hash"
 
-      - name: Smoke-test packaged Windows application launch
+      - name: Smoke-test installed Windows renderer and preload bridge
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -202,7 +202,6 @@ jobs:
           $installRoot = Join-Path $smokeRoot 'installed'
           $profileRoot = Join-Path $smokeRoot 'profile'
           New-Item -ItemType Directory -Force -Path $installRoot, $profileRoot | Out-Null
-          # Install silently into a temporary, isolated profile, then launch the actual installed executable.
           $install = Start-Process -FilePath $installer.FullName -ArgumentList @('/S', "/D=$installRoot") -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "NSIS silent install failed with exit code $($install.ExitCode)." }
           $exe = Get-ChildItem -LiteralPath $installRoot -Filter '*.exe' -File -Recurse |
@@ -212,14 +211,8 @@ jobs:
           $env:APPDATA = Join-Path $profileRoot 'AppData\Roaming'
           $env:LOCALAPPDATA = Join-Path $profileRoot 'AppData\Local'
           New-Item -ItemType Directory -Force -Path $env:APPDATA, $env:LOCALAPPDATA | Out-Null
-          $process = Start-Process -FilePath $exe.FullName -ArgumentList @('--disable-gpu') -PassThru
-          Start-Sleep -Seconds 12
-          $process.Refresh()
-          if ($process.HasExited) {
-            throw "Installed Workbench exited during launch smoke test (exit code $($process.ExitCode)). Check Windows startup diagnostics."
-          }
-          Write-Host "PASS: installed application stayed alive for 12 seconds (PID $($process.Id))."
-          Stop-Process -Id $process.Id -Force
+          node scripts/smoke-installed-windows.mjs $exe.FullName (Join-Path $profileRoot 'ChromiumProfile')
+          if ($LASTEXITCODE -ne 0) { throw "Installed renderer/preload smoke test failed with exit code $LASTEXITCODE." }
 
       - name: Upload installer, checksum, and build manifest
         uses: actions/upload-artifact@v4
