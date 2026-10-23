@@ -1,0 +1,82 @@
+schema_version: '2.0'
+harness:
+  id: copilot
+  profile_status: discovery_hints_only
+  last_reviewed: '2026-10-21'
+  compatibility_basis: Portable Agent Skills core where supported; all native capabilities must be verified
+    at runtime.
+  documentation_urls:
+  - https://docs.github.com/en/copilot/concepts/customizations/comparing-customizations
+  - https://docs.github.com/en/copilot
+  discovery_hints:
+    skill_paths:
+    - .github/skills/
+    - .agents/skills/
+    rules_paths:
+    - .github/copilot-instructions.md
+    - AGENTS.md
+    - .github/instructions/
+    hook_configuration_hints:
+    - inspect selected Copilot product surface, agent mode, and current hook support
+    subagent_configuration_hints:
+    - inspect selected Copilot product surface and current delegation support
+  declared_capabilities:
+    agent_skills: documented
+    hooks: probe_required
+    subagents: probe_required
+    parallel_execution: probe_required
+    mcp: probe_required
+    mcp_elicitation: probe_required
+    mcp_tasks_extensions: probe_required
+    structured_output: probe_required
+    streaming: probe_required
+    cancellation: probe_required
+    checkpoint_resume: probe_required
+    context_management: probe_required
+    model_routing: probe_required
+    local_model_access: probe_required
+    workspace_isolation: probe_required
+    network_policy: probe_required
+    secret_management: probe_required
+    trace_observability: probe_required
+    budget_controls: probe_required
+    multimodal_inputs: probe_required
+    evaluation_replay: probe_required
+verification:
+  runtime_verified: false
+  required_before_claiming_compatibility:
+  - Confirm skill discovery and load in the installed product/version.
+  - Verify actual configured rules and per-event hook behavior.
+  - Probe tool/MCP calls and denial behavior with harmless fixtures.
+  - Verify cancellation, file/workspace scope, and any claimed delegation semantics.
+  note: This profile is a discovery aid, not a conformance statement. Do not convert hints into observed
+    capabilities.
+capability_states:
+- available
+- partial
+- unavailable
+- unknown
+fallback_strategy:
+  agent_skills: Manually load root SKILL.md and requested support files; preserve package-relative paths.
+  hooks: Run gates manually and record them in timeline if the required event cannot be observed.
+  subagents: Execute specialist roles sequentially with explicit independent-review steps.
+  parallel_execution: Use sequential execution; do not imply parallel isolation.
+  mcp: Use another configured backend, then CLI fallback if adequate; otherwise CAPABILITY_BLOCKED.
+  mcp_elicitation: Ask in the primary interaction; do not wait on unsupported server-to-client requests.
+  mcp_tasks_extensions: Track tasks locally only when durable local state exists; record extension unsupported
+    otherwise.
+  structured_output: Validate model/tool output locally against schemas; reject invalid data.
+  streaming: Return final-only or bounded polling progress and record the loss of live updates.
+  cancellation: Use bounded timeout; do not claim cancelled until terminal status is observed.
+  checkpoint_resume: Resume only validated checkpoints; reconcile uncertain side effects before retry.
+  context_management: Write a bounded task summary with evidence references and unresolved uncertainties.
+  model_routing: Use an explicitly selected model and disclose unavailable capability/fallback.
+  local_model_access: Do not switch local task data to cloud without user approval.
+  workspace_isolation: Restrict to approved roots; otherwise use read-only/manual fallback or block.
+  network_policy: Block unapproved destinations; seek approval through the primary interaction.
+  secret_management: Do not expose or persist plaintext credentials; block when no secure credential path
+    exists.
+  trace_observability: Maintain minimal append-only timeline/evidence records and disclose trace gaps.
+  budget_controls: Set conservative explicit limits and stop when usage cannot be bounded.
+  multimodal_inputs: Use a documented local parser/conversion path and report fidelity limitations.
+  evaluation_replay: Run available offline fixtures and mark missing live evaluations as not tested.

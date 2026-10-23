@@ -1,0 +1,8 @@
+name: fallback-cli
+tools: [objdump, strings, ghidra_headless, radare2, jadx, and equivalents]
+primitive_mapping:
+  tools: Direct CLI invocation.
+  resources: File reads and generated analysis artifacts.
+  prompts: Local instruction/template files.
+used_when: "No usable MCP backend is available after version-aware detection/discovery (or the legacy initialize path) fails."
+record_in_evidence: "backend: fallback-cli; include tool versions and exact commands."

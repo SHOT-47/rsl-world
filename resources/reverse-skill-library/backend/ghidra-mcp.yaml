@@ -1,0 +1,12 @@
+schema_version: "2.0"
+name: "ghidra-mcp"
+identity_detection: "Record actual implementation, server identity/version, Ghidra version, transport and protocol lifecycle; multiple implementations may exist."
+protocol_support: "unknown_until_detected"
+protocol_contract: "backend/mcp-compatibility.yaml"
+required_ghidra_version: "detect_and_pin_per_project"
+primitives:
+  tools: {expected: true, verify_at_runtime: true}
+  resources: {expected: true, verify_at_runtime: true}
+  prompts: {expected: false, verify_at_runtime: true}
+integration_hint: "Ghidra -> Tools -> GhidraMCP -> Start MCP Server; verify against the installed implementation's documentation."
+fallback: "CLI-only mode declared in backend/fallback-cli.yaml."

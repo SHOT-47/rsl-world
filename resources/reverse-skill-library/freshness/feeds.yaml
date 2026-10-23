@@ -1,0 +1,63 @@
+schema_version: "2.0"
+policy:
+  fetching_implemented_here: false
+  freshness_claim_requires: [source_url, retrieved_at_utc, response_or_version_identifier, status, content_hash_or_version]
+  unavailable_statuses: [unavailable, stale, blocked, error, not_configured, unverified]
+  rule: "A declaration is not a retrieval. Never say current/latest unless a dated retrieval record supports it. If any required feed is unavailable, attach freshness_status=degraded and state its effect on the conclusion."
+feeds:
+  - id: owasp-web-top-10
+    source: "OWASP Web Application Security Risks"
+    locator: "https://owasp.org/www-project-top-ten/"
+    retrieval: "Follow official page to the current published edition; record edition and retrieval time."
+    trigger: "Application/dependency risk context"
+    ttl: 7d
+    required_output: [source_url, retrieved_at_utc, edition, status, notes]
+  - id: owasp-llm-top-10
+    source: "OWASP Top 10 for LLM Applications"
+    locator: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+    retrieval: "Record current edition/version; do not hard-code a year into the contract."
+    trigger: "LLM-invoking step or agentic-system risk review"
+    ttl: 7d
+    required_output: [source_url, retrieved_at_utc, edition, status, notes]
+  - id: language-research
+    source: "Language/decompilation research"
+    locator: "operator_configured_search_sources"
+    retrieval: "Record exact paper/repository URL, publication date and whether results are comparable to this target."
+    trigger: "Decompilation or type-inference claim"
+    ttl: 30d
+    required_output: [source_url, retrieved_at_utc, publication_date, status, comparability_limitations]
+  - id: cve-cwe
+    source: "NVD CVE/CWE records"
+    locator: "https://nvd.nist.gov/developers"
+    retrieval: "Use documented API/search sources; preserve query parameters and response date."
+    trigger: "Before vulnerability severity scoring"
+    ttl: 1d
+    required_output: [source_url, retrieved_at_utc, query, status, matching_context]
+  - id: toolchain-version
+    source: "Official tool release and deprecation notes"
+    locator: "per_tool_official_release_url"
+    retrieval: "Record tool version actually used plus official release/changelog evidence when available."
+    trigger: "Before security-sensitive or behavior-changing tool invocation"
+    ttl: 7d
+    required_output: [source_url, retrieved_at_utc, installed_version, status, compatibility_notes]
+  - id: rea-releases
+    source: "REA package/project release channel"
+    locator: "operator_configured_official_rea_release_url"
+    retrieval: "Resolve exact package identity and project URL before relying on release notes."
+    trigger: "Before REA invocation when freshness matters"
+    ttl: 7d
+    required_output: [source_url, retrieved_at_utc, package_identity, version, status]
+  - id: ghidra-releases
+    source: "Ghidra release channel"
+    locator: "https://github.com/NationalSecurityAgency/ghidra/releases"
+    retrieval: "Record Ghidra version actually installed and the current official release notes. GhidraMCP implementation has a separate version."
+    trigger: "Before Ghidra invocation when integration compatibility matters"
+    ttl: 7d
+    required_output: [source_url, retrieved_at_utc, ghidra_version, integration_version, status]
+  - id: rea-prompts
+    source: "REA-Prompts source channel"
+    locator: "operator_configured_official_prompt_repository"
+    retrieval: "Resolve exact repository/revision; hash the prompt/template actually used."
+    trigger: "Before using external prompt templates when they can affect results"
+    ttl: 30d
+    required_output: [source_url, retrieved_at_utc, revision, content_hash, status]

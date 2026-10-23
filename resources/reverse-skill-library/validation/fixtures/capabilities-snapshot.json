@@ -1,0 +1,41 @@
+{
+  "schema_version": "2.0",
+  "observed_at_utc": "2026-10-21T00:00:00Z",
+  "snapshot_id": "fixture-cap-001",
+  "harness": {
+    "id": "generic",
+    "version": null,
+    "profile_status": "discovery_hints_only",
+    "evidence_refs": [
+      "evidence/harness-detection.json"
+    ]
+  },
+  "capabilities": {
+    "skill_discovery": {
+      "status": "partial",
+      "detection_method": "manual skill files loaded into context",
+      "evidence_refs": [
+        "evidence/harness-detection.json"
+      ],
+      "fallback_state": "manual"
+    },
+    "hooks": {
+      "status": "unknown",
+      "detection_method": "no native runtime probe available",
+      "evidence_refs": [],
+      "fallback_state": "manual gates"
+    }
+  },
+  "backend": {
+    "status": "not_applicable",
+    "protocol_version": null,
+    "lifecycle_mode": "not_applicable",
+    "server_name": null,
+    "server_version": null,
+    "transport": null,
+    "primitives": [],
+    "extensions": [],
+    "evidence_refs": []
+  },
+  "fallback_summary": "Generic/manual profile; unverified capabilities remain unknown."
+}

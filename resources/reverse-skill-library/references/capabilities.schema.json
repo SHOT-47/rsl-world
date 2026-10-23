@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rsl.local/schemas/capabilities.schema.json",
+  "title": "RSL capability snapshot v2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "observed_at_utc",
+    "harness",
+    "capabilities",
+    "backend",
+    "fallback_summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "2.0"
+    },
+    "observed_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "harness": {
+      "type": "object",
+      "required": [
+        "id",
+        "version",
+        "profile_status",
+        "evidence_refs"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "claude-code",
+            "cursor",
+            "codex",
+            "gemini-cli",
+            "copilot",
+            "opencode",
+            "cline",
+            "windsurf",
+            "grok-build",
+            "generic"
+          ]
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "profile_status": {
+          "enum": [
+            "discovery_hints_only",
+            "runtime_observed",
+            "end_to_end_validated",
+            "unknown"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "capabilities": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "status",
+          "detection_method",
+          "evidence_refs",
+          "fallback_state"
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "available",
+              "partial",
+              "unavailable",
+              "unknown"
+            ]
+          },
+          "detection_method": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fallback_state": {
+            "type": "string",
+            "minLength": 1
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "backend": {
+      "type": "object",
+      "required": [
+        "status",
+        "protocol_version",
+        "lifecycle_mode",
+        "evidence_refs"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "available",
+            "partial",
+            "unavailable",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "protocol_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lifecycle_mode": {
+          "enum": [
+            "stateless",
+            "initialize_handshake",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "server_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "server_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "transport": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "primitives": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "tools",
+              "resources",
+              "prompts"
+            ]
+          }
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "fallback_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "toolchain": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "profile_warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

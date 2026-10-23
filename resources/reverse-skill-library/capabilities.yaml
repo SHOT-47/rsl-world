@@ -1,0 +1,161 @@
+schema_version: "2.0"
+registry_purpose: "Declare feature detection, evidence requirements, and safe fallbacks; runtime observations override adapter hints."
+status_vocabulary: [available, partial, unavailable, unknown]
+
+capabilities:
+  skill_discovery:
+    description: "Discover and load a portable Agent Skills SKILL.md package."
+    detect: "Inspect harness version, documented discovery paths, and actual skill listing/loading result."
+    evidence_required: [harness_version, observed_path, skill_load_probe]
+    fallback: "Provide the root SKILL.md and only the required supporting modules in context; record manual loading."
+  persistent_instructions:
+    description: "Discover repository/global rules and instruction files."
+    detect: "Inspect documented paths, filesystem configuration, and harness-reported instruction sources."
+    evidence_required: [observed_paths]
+    fallback: "Record no detected rules; do not infer absent rules merely because common filenames are missing."
+  hooks:
+    description: "Lifecycle event hooks with event-level detection."
+    detect: "Read the active version's hook configuration and probe available event names when possible."
+    evidence_required: [configured_events, verified_events]
+    fallback: "Run the corresponding gate explicitly and record it in the timeline; never claim the hook fired."
+    event_names_are_versioned: true
+  tool_calling:
+    description: "Invoke typed tools/functions and consume structured results."
+    detect: "Inspect tool schemas and execute a harmless read-only probe when approved."
+    evidence_required: [tool_names, input_schema, result_shape]
+    fallback: "Use an available direct CLI or manual workflow; stop if required side effects cannot be controlled."
+  file_access:
+    description: "Read/write target and evidence files within an explicit workspace boundary."
+    detect: "Verify readable/writable roots and path containment with harmless paths."
+    evidence_required: [allowed_roots, read_probe, write_probe_if_allowed]
+    fallback: "Read-only/manual analysis or CAPABILITY_BLOCKED; never assume the current working directory is the allowed scope."
+  command_execution:
+    description: "Execute local command-line tools with argument and environment control."
+    detect: "Inspect process APIs, sandbox/approval configuration, executable resolution, and timeout support."
+    evidence_required: [execution_surface, approval_model, timeout_support]
+    fallback: "Use UI-supported tools or mark the dependent step unavailable. Do not construct shell commands from untrusted strings."
+  hooks_approval:
+    description: "Pause execution for approval and receive a clear allow/deny response."
+    detect: "Probe the real permission/approval path, not just a config flag."
+    evidence_required: [approval_surface, deny_behavior]
+    fallback: "Ask the user in the primary interaction before a risky action; if that cannot be done, block the action."
+  subagents:
+    description: "Delegate work to independent specialist agents."
+    detect: "Verify actual launch, scoped input, returned output and cancellation semantics."
+    evidence_required: [delegation_api, isolation_boundary, cancel_behavior]
+    fallback: "Execute sequentially with the same role boundaries and record the fallback."
+  parallel_execution:
+    description: "Run independent tasks concurrently with resource limits."
+    detect: "Verify concurrency controls, cancellation and isolation, not just subagent presence."
+    evidence_required: [max_concurrency, cancellation, shared_resource_policy]
+    fallback: "Execute sequentially. Never parallelize writes to shared artifacts without coordination."
+  mcp:
+    description: "Use Model Context Protocol with version-aware lifecycle and capability detection."
+    detect: "Use a current SDK's auto/version-aware connect path; modern 2026-07-28 may use server/discover with no initialize handshake, while 2025-11-25 and earlier use initialize."
+    evidence_required: [protocol_version, lifecycle_mode, server_identity, server_capabilities, negotiated_primitives]
+    fallback: "Try another configured backend, then the explicit CLI fallback if adequate; otherwise CAPABILITY_BLOCKED."
+  mcp_tools:
+    description: "Call negotiated MCP tools with input/output schemas and error handling."
+    detect: "List tools and validate each selected tool schema before use."
+    evidence_required: [tool_catalog_hash, selected_tool_schema, invocation_record]
+    fallback: "Use only a documented alternative; never synthesize an unadvertised tool name."
+  mcp_resources:
+    description: "Read negotiated MCP resources as contextual data."
+    detect: "Check advertised resource capabilities and read a known/safe resource when appropriate."
+    evidence_required: [resource_uri, read_status]
+    fallback: "Use authorized direct file/API retrieval."
+  mcp_prompts:
+    description: "Load negotiated MCP prompts/templates."
+    detect: "List advertised prompts and fetch the selected template."
+    evidence_required: [prompt_name, prompt_version_or_hash]
+    fallback: "Use the version-controlled local prompt/template."
+  mcp_elicitation:
+    description: "Obtain user input when an MCP workflow explicitly needs it."
+    detect: "Check the current protocol version and advertised support for elicitation or modern multi-round-trip input-required results."
+    evidence_required: [protocol_version, elicitation_mode]
+    fallback: "Request input in the main UI; do not block indefinitely waiting on an unsupported reverse request."
+  mcp_tasks_extensions:
+    description: "Long-running MCP task behavior exposed by an explicitly supported extension."
+    detect: "Check extension identifiers, schemas, lifecycle and cancellation semantics."
+    evidence_required: [extension_id, extension_version, task_status_schema]
+    fallback: "Use local task tracking where supported; do not assume a server task can be resumed across reconnects."
+  mcp_deprecated_surfaces:
+    description: "Record legacy Roots, Sampling, and Logging support for interoperability, without new dependencies."
+    detect: "Inspect protocol era/version and advertised legacy capabilities."
+    policy: "Do not depend on Roots, Sampling, or Logging in new designs for MCP 2026-07-28+. In older protocol eras they may exist; report their availability and migrate to explicit tool parameters/configuration, direct provider API integration, and stderr/OpenTelemetry respectively."
+    fallback: "Pass scoped paths explicitly; call the configured provider adapter directly; use structured local telemetry."
+  structured_output:
+    description: "Validate model/tool responses against a machine-readable schema."
+    detect: "Probe schema-constrained response mode and validate an output fixture."
+    evidence_required: [schema, validation_result]
+    fallback: "Parse and validate output locally; reject invalid structures instead of silently coercing them."
+  streaming:
+    description: "Stream model tokens, tool activity and task progress."
+    detect: "Verify ordered incremental events and terminal event behavior."
+    evidence_required: [event_contract, terminal_state]
+    fallback: "Poll bounded task status or return final-only progress; do not hold the UI synchronously."
+  cancellation:
+    description: "Cancel model calls, tools, delegates and subprocesses."
+    detect: "Run cancellation tests at each execution boundary."
+    evidence_required: [cancel_request, observed_terminal_state, cleanup_result]
+    fallback: "Apply a bounded timeout and explicitly mark cancellation unavailable; do not claim the operation stopped until observed."
+  checkpoint_resume:
+    description: "Persist and recover task state and evidence after interruption."
+    detect: "Run a fixture task, interrupt, restart and verify validated recovery."
+    evidence_required: [checkpoint_id, schema_version, recovery_test]
+    fallback: "Restart only idempotent work; reconcile uncertain side effects before retry."
+  context_management:
+    description: "Summarize/compact context while preserving constraints, evidence, pending actions and uncertainty."
+    detect: "Inspect compaction interfaces and run a long-context preservation fixture."
+    evidence_required: [compaction_strategy, preserved_invariants]
+    fallback: "Create a bounded external task summary with source links; do not rely on undocumented hidden state."
+  model_routing:
+    description: "Select provider/model based on required capabilities, policy, availability and budgets."
+    detect: "Read model metadata and execute a minimal approved capability probe."
+    evidence_required: [selected_provider, selected_model, capability_match, fallback_decision]
+    fallback: "Use a user-selected compatible model; ask before switching from local to cloud."
+  local_model_access:
+    description: "Connect to local model runtimes through explicit provider adapters."
+    detect: "Probe the configured local endpoint and supported API dialect without transmitting data externally."
+    evidence_required: [endpoint_origin, model_id, api_dialect, connectivity_result]
+    fallback: "Ask before any cloud fallback; otherwise report LOCAL_MODEL_UNAVAILABLE."
+  network_policy:
+    description: "Enforce allowed destinations, protocols, credentials and data-transfer constraints."
+    detect: "Inspect effective network policy and test allow/deny behavior in a harmless environment."
+    evidence_required: [effective_policy_id, destination, decision]
+    fallback: "Block unapproved destinations and request approval through the primary UI."
+  workspace_isolation:
+    description: "Isolate target inputs, per-agent writes, scratch artifacts and outputs."
+    detect: "Verify root containment, write scopes, symlink handling and delegate-specific paths."
+    evidence_required: [workspace_roots, isolation_test]
+    fallback: "Use read-only analysis or run sequentially in a user-approved directory; block unsafe writes."
+  secret_management:
+    description: "Use task-scoped secret access without persisting plaintext credentials."
+    detect: "Inspect credential source and redaction path; use harmless test canaries."
+    evidence_required: [credential_reference, access_scope, redaction_test]
+    fallback: "Do not pass credentials to agents/workers; ask user to configure a supported secure credential path."
+  trace_observability:
+    description: "Record task/model/tool events with trace IDs and redacted payload summaries."
+    detect: "Inspect emitted records and secret redaction; correlate a fixture end-to-end."
+    evidence_required: [trace_id, event_sequence, redaction_result]
+    fallback: "Write append-only minimal timeline records and clearly note missing trace coverage."
+  budget_controls:
+    description: "Bound time, iterations, tool calls, tokens, concurrency and cost."
+    detect: "Verify per-task limits and enforcement when a fixture attempts to exceed them."
+    evidence_required: [configured_limits, limit_trigger_result]
+    fallback: "Use conservative manual caps and stop when usage cannot be measured or bounded."
+  multimodal_inputs:
+    description: "Accept and safely inspect relevant files, images, captures or other modalities."
+    detect: "Inspect advertised input types and validate a harmless fixture."
+    evidence_required: [accepted_media_types, size_limits]
+    fallback: "Use a local parser/conversion path; record fidelity loss and unsupported modalities."
+  evaluation_replay:
+    description: "Run repeatable fixtures, trace replay and behavior regression checks."
+    detect: "Verify fixture runner, deterministic checks, grading output and baseline versioning."
+    evidence_required: [fixture_set_version, run_id, result_summary]
+    fallback: "Run the smallest documented manual regression set and mark EVAL_COVERAGE_PARTIAL."
+  artifact_integrity:
+    description: "Hash and link evidence, schemas, tools and package versions for reproducibility."
+    detect: "Verify SHA-256 calculation, evidence-link validation and manifest output."
+    evidence_required: [artifact_hash, manifest_id]
+    fallback: "Record stable paths and sizes; mark integrity coverage partial if hashing is unavailable."

@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rsl.local/schemas/evidence.schema.json",
+  "title": "RSL evidence artifact record",
+  "type": "object",
+  "required": [
+    "artifact_id",
+    "kind",
+    "path",
+    "sha256",
+    "created_at_utc",
+    "source",
+    "toolchain",
+    "sensitivity",
+    "redaction",
+    "limitations"
+  ],
+  "properties": {
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "enum": [
+        "input_metadata",
+        "tool_output",
+        "trace",
+        "capture",
+        "disassembly",
+        "decompilation",
+        "test_result",
+        "diff",
+        "report",
+        "external_source",
+        "other"
+      ]
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "type",
+        "locator"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "local_file",
+            "command",
+            "mcp_tool",
+            "mcp_resource",
+            "web",
+            "model",
+            "manual"
+          ]
+        },
+        "locator": {
+          "type": "string"
+        },
+        "uri": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "content_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "toolchain": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "version"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "parameters_redacted": {
+            "type": "string"
+          },
+          "executable_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "sensitive",
+        "secret-bearing",
+        "unknown"
+      ]
+    },
+    "redaction": {
+      "type": "object",
+      "required": [
+        "applied_before_persistence",
+        "ruleset",
+        "findings"
+      ],
+      "properties": {
+        "applied_before_persistence": {
+          "type": "boolean"
+        },
+        "ruleset": {
+          "type": "string"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "omissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "parent_artifact_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "case_capability_snapshot_ref": {
+      "type": "string"
+    },
+    "integrity_note": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

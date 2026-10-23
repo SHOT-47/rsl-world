@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rsl.local/schemas/claim.schema.json",
+  "title": "RSL claim contract",
+  "type": "object",
+  "required": [
+    "claim_id",
+    "claim",
+    "epistemic_status",
+    "confidence",
+    "evidence_refs",
+    "verification"
+  ],
+  "properties": {
+    "claim_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claim": {
+      "type": "string",
+      "minLength": 1
+    },
+    "epistemic_status": {
+      "enum": [
+        "confirmed_fact",
+        "inference",
+        "unknown"
+      ]
+    },
+    "confidence": {
+      "enum": [
+        "proven",
+        "strongly_inferred",
+        "inferred",
+        "unverified"
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "gate",
+        "status"
+      ],
+      "properties": {
+        "gate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "not_run",
+            "blocked",
+            "not_applicable"
+          ]
+        },
+        "verified_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verified_at_utc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "artifact_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "capability_snapshot_ref": {
+      "type": "string"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "confidence": {
+            "const": "proven"
+          }
+        },
+        "required": [
+          "confidence"
+        ]
+      },
+      "then": {
+        "properties": {
+          "evidence_refs": {
+            "minItems": 1
+          },
+          "verification": {
+            "properties": {
+              "status": {
+                "const": "passed"
+              },
+              "verified_by": {
+                "type": "string",
+                "minLength": 1
+              },
+              "verified_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "artifact_refs": {
+                "minItems": 1
+              }
+            },
+            "required": [
+              "status",
+              "verified_by",
+              "verified_at_utc",
+              "artifact_refs"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,90 @@
+{
+  "name": "rsl-workbench",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Windows-first local-first desktop workbench for the Reverse Skill Library.",
+  "main": "out/main/index.js",
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10.9.0"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test tests/*.test.mjs && node --experimental-strip-types --test tests/*.test.ts && python -m unittest discover -s tests -p 'test_schema.py' -v && python resources/reverse-skill-library/validation/check_library.py && python -m unittest discover -s resources/reverse-skill-library/validation -p 'test_*.py' -v",
+    "test:static": "python scripts/verify_structure.py",
+    "validate:rsl": "python resources/reverse-skill-library/validation/check_library.py",
+    "validate:rsl:tests": "python -m unittest discover -s resources/reverse-skill-library/validation -p 'test_*.py' -v",
+    "package:win": "npm run typecheck && npm test && npm run test:syntax && npm run test:static && npm run build && electron-builder --win nsis --x64",
+    "test:runtime": "node --test tests/*.test.mjs && node --experimental-strip-types --test tests/*.test.ts && python -m unittest discover -s tests -p 'test_schema.py' -v",
+    "test:rsl": "python resources/reverse-skill-library/validation/check_library.py && python -m unittest discover -s resources/reverse-skill-library/validation -p 'test_*.py' -v",
+    "test:syntax": "node scripts/check_typescript_syntax.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "12.4.1",
+    "lucide-react": "0.468.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "4.0.1",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "24.0.0",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "@vitejs/plugin-react": "5.0.0",
+    "electron": "44.9.3",
+    "electron-builder": "26.0.12",
+    "electron-vite": "6.0.0",
+    "typescript": "5.9.3"
+  },
+  "build": {
+    "appId": "dev.rsl.workbench",
+    "productName": "RSL Workbench",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/reverse-skill-library",
+        "to": "reverse-skill-library"
+      },
+      {
+        "from": "resources/schema",
+        "to": "schema"
+      },
+      {
+        "from": "workers",
+        "to": "workers"
+      },
+      {
+        "from": "resources/tray.png",
+        "to": "tray.png"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "RSL-Workbench-${version}-Setup.${ext}",
+      "icon": "resources/app.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "npmRebuild": true,
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**"
+    ]
+  },
+  "type": "module",
+  "packageManager": "npm@10.9.2"
+}

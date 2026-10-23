@@ -1,0 +1,99 @@
+schema_version: '1.0'
+determinism: Same normalized target metadata and same routing.yaml version must produce
+  identical entry and cross-check module IDs. Unknown inputs must not be guessed.
+routes:
+- id: android-package
+  match_any:
+  - apk
+  - aab
+  - android_package
+  entry: 06-platform-android
+  cross_check:
+  - 03-static-binary
+  - 04-dynamic-instrument
+- id: native-binary
+  match_any:
+  - exe
+  - dll
+  - so
+  - elf
+  - pe
+  - macho-native
+  - native_binary
+  entry: 03-static-binary
+  cross_check:
+  - 04-dynamic-instrument
+- id: managed-bytecode
+  match_any:
+  - dotnet
+  - jvm
+  - jar
+  - class
+  - cil
+  - managed_bytecode
+  entry: 07-platform-dotnet-jvm-bytecode
+  cross_check:
+  - 03-static-binary
+- id: wasm
+  match_any:
+  - wasm
+  - webassembly
+  entry: 11-platform-wasm-dsl-vm
+  cross_check:
+  - 03-static-binary
+  - 04-dynamic-instrument
+- id: macos-ios
+  match_any:
+  - macho
+  - macos_app
+  - ios_app
+  entry: 08-platform-macos-ios
+  cross_check:
+  - 03-static-binary
+- id: web-electron
+  match_any:
+  - web_bundle
+  - javascript_bundle
+  - electron
+  - asar
+  entry: 09-platform-web-electron
+  cross_check:
+  - 12-protocol-reverse
+- id: firmware-iot
+  match_any:
+  - firmware
+  - iot
+  - embedded_image
+  entry: 10-platform-firmware-iot
+  cross_check:
+  - 03-static-binary
+- id: custom-dsl-vm
+  match_any:
+  - custom_dsl
+  - custom_vm
+  - bytecode_vm
+  entry: 11-platform-wasm-dsl-vm
+  cross_check:
+  - 04-dynamic-instrument
+- id: protocol-capture
+  match_any:
+  - pcap
+  - protocol
+  - network_capture
+  entry: 12-protocol-reverse
+  cross_check:
+  - 03-static-binary
+- id: packed-obfuscated
+  match_any:
+  - packed
+  - obfuscated
+  entry: 05-unpack-deobfuscate
+  cross_check:
+  - 04-dynamic-instrument
+no_route:
+  status: NO_ROUTE
+  required_action: Report unsupported/ambiguous format and evidence; propose a bounded
+    new route or user-directed mapping; do not force a module.
+overrides:
+  policy: A user-approved explicit route override must be written to triage.json with
+    reason and scope. It does not override authorization, safety or evidence gates.

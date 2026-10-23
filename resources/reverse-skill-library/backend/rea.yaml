@@ -1,0 +1,16 @@
+schema_version: "2.0"
+name: "rea"
+identity_detection: "Record actual serverInfo/name/version and transport from the active connection; do not trust this manifest as handshake proof."
+protocol_support: "unknown_until_detected"
+protocol_contract: "backend/mcp-compatibility.yaml"
+primitives:
+  tools: {expected: true, verify_at_runtime: true}
+  resources: {expected: true, verify_at_runtime: true}
+  prompts: {expected: true, verify_at_runtime: true}
+  elicitation: {expected: false, verify_at_runtime: true, note: "Version-dependent; support may use modern input_required multi-round-trip requests."}
+required_tool_examples: [decompile, disassemble, analyze_binary, trace_runtime]
+required_resource_examples: [file_contents, binary_metadata, call_graph]
+required_prompt_examples: [reverse_engineer_workflow, vulnerability_analysis_template]
+registration_hint: "npx rea-agents setup"
+registration_safety: "Before installation, inspect package identity/version and exact command effects; ask for approval under the host environment's installation policy."
+fallback: "CLI-only mode declared in backend/fallback-cli.yaml; record reduced coverage and missing operations."

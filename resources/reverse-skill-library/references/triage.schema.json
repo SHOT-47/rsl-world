@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rsl.local/schemas/triage.schema.json",
+  "title": "RSL triage result",
+  "type": "object",
+  "required": [
+    "status",
+    "format",
+    "architecture",
+    "selected_entry_skill",
+    "selected_cross_check_skills",
+    "route_id",
+    "capability_snapshot_ref",
+    "evidence_refs"
+  ],
+  "properties": {
+    "status": {
+      "enum": [
+        "ROUTED",
+        "NO_ROUTE",
+        "TARGET_ALREADY_SOLVED",
+        "CAPABILITY_BLOCKED",
+        "SCOPE_BLOCKED"
+      ]
+    },
+    "format": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "architecture": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "protection_signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "selected_entry_skill": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "selected_cross_check_skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "route_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "route_override": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "capability_snapshot_ref": {
+      "type": "string"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}
