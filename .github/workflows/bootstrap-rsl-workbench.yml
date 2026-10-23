@@ -117,6 +117,12 @@ jobs:
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add -A
             if ($LASTEXITCODE -ne 0) { throw 'git add failed.' }
+            # The default Actions token cannot push newly added workflow files without extra workflow permission.
+            # Persist application source and lockfile now; the secondary workflow is added via the authorized repository file API after this run.
+            if (Test-Path '.github/workflows/windows-nsis.yml') {
+              git reset -- '.github/workflows/windows-nsis.yml'
+              if ($LASTEXITCODE -ne 0) { throw 'Could not exclude the secondary workflow from the source commit.' }
+            }
             git diff --cached --quiet
             $diffCode = $LASTEXITCODE
             if ($diffCode -eq 1) {
