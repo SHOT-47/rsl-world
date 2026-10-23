@@ -311,7 +311,7 @@ function registerIpcHandlers(): void {
         properties: ['openDirectory', 'createDirectory']
       })
       if (selection.canceled || selection.filePaths.length === 0) return ok({ exported: false, harness: harnessInput, destination: null, summary: 'Export cancelled; no files were changed.', details: [] })
-      const destination = await realpath(selection.filePaths[0]!)
+      const destination = await realpath(selection.filePaths[0])
       const answer = await dialog.showMessageBox(mainWindow!, {
         type: 'warning',
         title: 'Review RSL skill export',
@@ -455,7 +455,7 @@ Provider diagnostics will send a request to this configured endpoint only when y
         properties: ['openFile']
       })
       if (selection.canceled || selection.filePaths.length === 0) return ok(null)
-      const selected = await realpath(selection.filePaths[0]!)
+      const selected = await realpath(selection.filePaths[0])
       if (!isWithinWorkspace(selected, root)) throw new Error('Evidence inspection is limited to files inside the selected project folder.')
       const relPath = relative(root, selected).split(sep).join('/')
       const response = await evidenceWorker().run({ operation: 'inspect_file', workspaceRoot: root, path: relPath })
@@ -521,7 +521,7 @@ async function requestSafeQuit(): Promise<void> {
     safeToClose = agentRuntime ? await agentRuntime.cancelAndWait(8_000) : true
     if (!safeToClose) {
       focusWindow()
-      await dialog.showMessageBox(mainWindow!, {
+      await dialog.showMessageBox(mainWindow ?? undefined, {
         type: 'error',
         title: 'Tasks are still stopping',
         message: 'Workbench could not confirm a safe shutdown yet.',
@@ -536,7 +536,7 @@ async function requestSafeQuit(): Promise<void> {
     app.quit()
   } catch {
     focusWindow()
-    await dialog.showMessageBox(mainWindow!, {
+    await dialog.showMessageBox(mainWindow ?? undefined, {
       type: 'error', title: 'Shutdown deferred',
       message: 'Workbench could not verify that tasks stopped safely.',
       detail: 'The local database remains open. Inspect task status and try closing again.',

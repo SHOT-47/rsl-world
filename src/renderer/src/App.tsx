@@ -320,7 +320,7 @@ export default function App() {
       }
       const result = await window.workbench.createTask({
         projectRoot,
-        title: (text.split(/\r?\n/, 1)[0] ?? '').slice(0, 120) || (selectedMode === 'target-api' ? 'Target API investigation' : 'New task'),
+        title: text.split(/\r?\n/, 1)[0].slice(0, 120) || (selectedMode === 'target-api' ? 'Target API investigation' : 'New task'),
         prompt: text,
         mode: selectedMode,
         ...(selectedMode === 'target-api' ? { workflowConfig: { targetApi: {

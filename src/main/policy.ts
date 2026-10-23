@@ -6,7 +6,7 @@ export type OperationKind =
   | 'read_file' | 'list_directory' | 'search_files' | 'read_project_metadata'
   | 'write_file' | 'delete_file' | 'execute_command' | 'network_request'
   | 'install_dependency' | 'credential_use' | 'credential_export' | 'policy_override'
-  | 'outside_workspace' | 'disable_security' | 'acknowledge_prior_art'
+  | 'outside_workspace' | 'disable_security'
 
 export interface ProposedOperation {
   id: string

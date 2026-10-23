@@ -55,8 +55,6 @@ if (Test-Path 'package-lock.json') {
 }
 
 if (-not $SkipTests) {
-    $pythonRequirements = Join-Path $RepoRoot 'resources/reverse-skill-library/validation/requirements-test.txt'
-    Invoke-Checked 'python' @('-m', 'pip', 'install', '--disable-pip-version-check', '--no-input', '-r', $pythonRequirements)
     Invoke-Checked 'npm' @('run', 'typecheck')
     Invoke-Checked 'npm' @('test')
     Invoke-Checked 'npm' @('run', 'test:syntax')
