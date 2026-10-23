@@ -208,7 +208,7 @@ export class PythonWorkerRunner {
           const response = JSON.parse(stdout.trim()) as WorkerResponse
           if (response.id !== request.id) throw new Error('Worker response ID did not match the request.')
           if (response.protocolVersion !== undefined && response.protocolVersion !== 1) throw new Error('Worker response protocol version mismatch.')
-          resolvePromise({ protocolVersion: 1, ...response })
+          resolvePromise({ ...response, protocolVersion: 1 })
         } catch (error) {
           rejectPromise(new Error(`Invalid Python worker response: ${error instanceof Error ? error.message : 'parse failed'}`))
         }
