@@ -222,8 +222,8 @@ export async function searchAwesomeReverseEngineeredPriorArt(
       // Parse and validate before caching; malformed or adversarial content never replaces a known cache.
       const parsed = parseAwesomeIndex(payloadJson)
       const newEnvelope: AwesomeIndexEnvelope = {
-        version: 1, fetchedAtUtc: observedAtUtc, etag: response.headers.etag ?? staleEnvelope?.etag ?? null,
-        lastModified: response.headers['last-modified'] ?? staleEnvelope?.lastModified ?? null,
+        version: 1, fetchedAtUtc: observedAtUtc, etag: response.headers?.etag ?? staleEnvelope?.etag ?? null,
+        lastModified: response.headers?.['last-modified'] ?? staleEnvelope?.lastModified ?? null,
         payloadSha256: createHash('sha256').update(payloadJson, 'utf8').digest('hex'), payloadJson
       }
       if (options.cachePath) {
@@ -333,7 +333,7 @@ async function detectHarness(projectRoot: string): Promise<{ id: string; profile
       try { await stat(join(projectRoot, marker.replace(/\/$/, ''))); found.push(profile.id); break } catch { /* absent marker */ }
     }
   }
-  return found.length === 1 ? { id: found[0], profileStatus: 'discovery_hints_only', markers: found } : { id: 'generic', profileStatus: found.length ? 'unknown' : 'unknown', markers: found }
+  return found.length === 1 ? { id: found[0] ?? 'generic', profileStatus: 'discovery_hints_only', markers: found } : { id: 'generic', profileStatus: found.length ? 'unknown' : 'unknown', markers: found }
 }
 
 async function scanFiles(root: string): Promise<string[]> {
@@ -366,9 +366,9 @@ function inferFormat(title: string, prompt: string, files: string[]): { format: 
   const explicit = [...titleAndPrompt.matchAll(/(?:^|[\\/\s"'`(])[^\s"'`<>]*\.([a-zA-Z0-9]+)(?=$|[\s"'`),;:])/g)]
     .map(match => EXTENSION_TOKENS[(match[1] ?? '').toLowerCase()]).filter((token): token is string => Boolean(token))
   const exactUnique = [...new Set(explicit)]
-  if (exactUnique.length === 1) return { format: exactUnique[0], basis: 'A supported file extension was explicitly named in the task title/prompt; content was not inspected.', ambiguous: false }
+  if (exactUnique.length === 1) return { format: exactUnique[0] ?? null, basis: 'A supported file extension was explicitly named in the task title/prompt; content was not inspected.', ambiguous: false }
   if (exactUnique.length > 1) return { format: null, basis: 'The task text contains multiple supported file-format hints; routing was not guessed.', ambiguous: true }
-  const discovered = [...new Set(files.map(path => EXTENSION_TOKENS[path.split('.').at(-1)?.toLowerCase() ?? '']).filter(Boolean))]
+  const discovered = [...new Set(files.map(path => EXTENSION_TOKENS[path.split('.').at(-1)?.toLowerCase() ?? '']).filter((token): token is string => Boolean(token)))]
   if (discovered.length === 1) return { format: discovered[0], basis: 'One supported file-format family was found by bounded filename-only inventory; file contents were not inspected.', ambiguous: false }
   return { format: null, basis: discovered.length > 1 ? 'Multiple supported file-format families were found in the project; target identity is ambiguous.' : 'No supported format hint was found in task text or bounded filename-only inventory.', ambiguous: discovered.length > 1 }
 }
