@@ -31,12 +31,12 @@ function isLoopbackAddress(address: string): boolean {
 function isPrivateOrSpecialIPv4(address: string): boolean {
   const octets = address.split('.').map(Number)
   if (octets.length !== 4 || octets.some(value => !Number.isInteger(value) || value < 0 || value > 255)) return true
-  const [a, b] = octets
+  const a = octets[0]!, b = octets[1]!
   return a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127) ||
     (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && (b === 0 || b === 88 || b === 168)) || (a === 198 && (b === 18 || b === 19 || b === 51)) || (a === 203 && b === 0)
 }
 function isPrivateOrSpecialIPv6(address: string): boolean {
-  const value = normalizedHost(address).split('%')[0]
+  const value = normalizedHost(address).split('%')[0] ?? ''
   if (value === '::' || value === '::1' || value.startsWith('fc') || value.startsWith('fd') || value.startsWith('fe8') || value.startsWith('fe9') || value.startsWith('fea') || value.startsWith('feb') || value.startsWith('ff')) return true
   if (value.startsWith('::ffff:')) {
     const mapped = value.slice('::ffff:'.length)
