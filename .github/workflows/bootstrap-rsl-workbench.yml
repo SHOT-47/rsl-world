@@ -85,7 +85,9 @@ jobs:
           if (!(Test-Path (Join-Path $source 'package.json'))) { throw 'package.json missing after extraction.' }
           & robocopy $source $PWD.Path /E /COPY:DAT /DCOPY:DAT /R:2 /W:1 /XD node_modules release .git
           $copyCode = $LASTEXITCODE
+          # Robocopy codes 0-7 are success/warning outcomes; clear the native exit code so pwsh does not mark this step failed at script end.
           if ($copyCode -gt 7) { throw "Source copy failed with robocopy code $copyCode." }
+          $global:LASTEXITCODE = 0
           Remove-Item -LiteralPath $source -Recurse -Force
           Write-Host 'Source files expanded into the repository root.'
 
