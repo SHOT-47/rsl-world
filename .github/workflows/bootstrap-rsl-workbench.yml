@@ -145,6 +145,8 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          python -m pip install --disable-pip-version-check --no-input -r resources/reverse-skill-library/validation/requirements-test.txt
+          if ($LASTEXITCODE -ne 0) { throw "Python validation dependency install failed with exit code $LASTEXITCODE." }
           npm run package:win
           if ($LASTEXITCODE -ne 0) { throw "package:win failed with exit code $LASTEXITCODE." }
           $installer = Get-ChildItem -LiteralPath 'release' -Filter '*Setup.exe' -File | Select-Object -First 1
