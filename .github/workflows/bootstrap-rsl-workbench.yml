@@ -1,4 +1,5 @@
 name: Bootstrap RSL Workbench and build Windows NSIS installer
+# This workflow always builds the current committed source after verifying the reviewed bootstrap archive.
 
 on:
   workflow_dispatch:
