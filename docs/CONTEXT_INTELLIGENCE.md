@@ -1,6 +1,6 @@
 # Context Intelligence: Cleanup Loop and Token Assist
 
-**Status:** Architecture proposal; not implemented in the browser preview  
+**Status:** Architecture and backend primitives implemented; native agent lifecycle integration active; reduced-context compaction disabled; browser preview has no execution backend  
 **Scope:** RSL Workbench agent runtime and future authenticated execution backend  
 **Decision:** Adopt both capabilities after the corrections and safety gates in this document.
 
