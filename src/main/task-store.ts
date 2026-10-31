@@ -424,6 +424,34 @@ export class TaskStore {
     return snapshot
   }
 
+  listContextSnapshots(taskId: string, limit = 100): ContextSnapshotRecord[] {
+    if (!this.getTask(taskId)) throw new Error('Context snapshot task was not found.')
+    const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 1000)
+    const rows = this.database.prepare('SELECT snapshot_json,sha256,status FROM task_context_snapshots WHERE task_id=? ORDER BY version DESC LIMIT ?')
+      .all(taskId, safeLimit) as Array<{ snapshot_json: string; sha256: string; status: ContextSnapshotRecord['status'] }>
+    return rows.map(row => {
+      if (createHash('sha256').update(row.snapshot_json, 'utf8').digest('hex') !== row.sha256) throw new Error('Context snapshot history failed its integrity check.')
+      const payload = JSON.parse(row.snapshot_json) as Omit<ContextSnapshotRecord, 'status' | 'sha256'>
+      if (payload.taskId !== taskId || payload.auditPassed !== true) throw new Error('Context snapshot history contains an invalid record.')
+      return { ...payload, status: row.status, sha256: row.sha256 }
+    })
+  }
+
+  /** Proposes a new version containing an older snapshot's record set; it never rewrites history. */
+  restoreContextSnapshot(taskId: string, sourceVersion: number, expectedActiveVersion: number, boundary: ContextSnapshotBoundary, auditPassed: boolean): Omit<ContextSnapshotRecord, 'status'> & { status: 'proposed' } {
+    if (!Number.isSafeInteger(sourceVersion) || sourceVersion < 1) throw new Error('Source context snapshot version is invalid.')
+    const source = this.listContextSnapshots(taskId).find(snapshot => snapshot.version === sourceVersion)
+    if (!source || source.status === 'proposed') throw new Error('Only an active or superseded context snapshot can be restored.')
+    return this.createContextSnapshot(taskId, {
+      expectedActiveVersion,
+      activeRecordIds: source.activeRecordIds,
+      archivedRecordIds: source.archivedRecordIds,
+      reason: `Proposed restoration from context snapshot ${sourceVersion}; revalidation is required.`,
+      auditPassed,
+      boundary
+    })
+  }
+
   getActiveContextSnapshot(taskId: string): ContextSnapshotRecord | null {
     const row = this.database.prepare("SELECT snapshot_json,sha256,status FROM task_context_snapshots WHERE task_id=? AND status='active'").get(taskId) as { snapshot_json: string; sha256: string; status: 'active' } | undefined
     if (!row) return null
