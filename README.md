@@ -36,3 +36,7 @@ npm run validate:rsl
 ```
 
 The full test suite still includes the original local-runtime contract tests; browser preview support does not imply that those backend capabilities are exposed to a browser.
+
+## Architecture proposal
+
+The proposed **Cleanup Loop** and **Token Assist** design is documented in [Context Intelligence](docs/CONTEXT_INTELLIGENCE.md). It is a backend architecture proposal, not a feature currently enabled in the browser preview.
