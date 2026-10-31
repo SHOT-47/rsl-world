@@ -43,6 +43,11 @@
 - status: NOT_LIVE_TESTED. Exported agent profiles are not runtime certification.
 - depends_on: N04,N06
 
+## N12 — Context Intelligence (Cleanup Loop + Token Assist)
+- goal: Model-aware context planning, low-confidence shadow token telemetry, preservation-aware cleanup proposals, provenance/tool-integrity audit and reversible task-scoped context snapshots.
+- status: PHASE1_VERIFIED_CI (shadow telemetry and context planner tests pass; append-only ledger and compare-and-swap snapshot storage are implemented; automatic task-loop compaction and model-specific tokenization remain disabled).
+- depends_on: N02,N05
+
 ## N09 — Security and performance release gates
 - goal: OS-level execution isolation, adversarial testing, recovery crash matrix, redaction recall, deterministic corpus benchmarks.
 - status: NOT_COMPLETE.
@@ -51,7 +56,7 @@
 ## Latest verification
 - TypeScript/TSX syntax transpilation: PASS, 35 files; syntax check only, not semantic typecheck.
 - Workbench static guard: PASS, 48 structural/security/persistence/package assertions.
-- Independently completed executable suites: 9 JavaScript tests + 69 TypeScript tests + 8 SQLite schema tests + 37 RSL regression tests = 123 passed, zero individual test failures.
+- Latest GitHub Actions run (commit 81d14c8): 9 JavaScript tests + 80 TypeScript tests + 10 SQLite schema tests + 37 RSL regression tests = 136 passed; browser static guard 16 assertions; RSL checker 370 assertions; strict typecheck and browser build passed.
 - RSL checker: PASS, 370 static/schema assertions; 20 skills manifests, 19 modules, 10 adapters, 31 capability categories, 10 routes and 8 feeds.
 - Target-reuse public index behavior/cache and Target API controls are mock-tested; no real in-app live requests are claimed.
-- npm registry was unreachable; no `node_modules`, package lock, semantic typecheck, Electron build, GUI start, native `better-sqlite3` binding test or Windows installer is claimed.
+- CI installed locked dependencies and passed semantic typecheck and browser build. Native `better-sqlite3` TaskStore lifecycle/restart testing, live provider/tokenizer integration, automatic context activation, UI integration and production browser backend deployment remain unverified.
