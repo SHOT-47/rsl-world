@@ -36,7 +36,7 @@ class SchemaContractTests(unittest.TestCase):
         )
 
     def test_schema_versions_and_foreign_keys(self) -> None:
-        self.assertEqual(self.db.execute("SELECT value FROM schema_meta WHERE key='schema_version'").fetchone()[0], "6")
+        self.assertEqual(self.db.execute("SELECT value FROM schema_meta WHERE key='schema_version'").fetchone()[0], "7")
         with self.assertRaises(sqlite3.IntegrityError):
             self.add_task(status="unsafe-status")
         with self.assertRaises(sqlite3.IntegrityError):
@@ -108,6 +108,58 @@ class SchemaContractTests(unittest.TestCase):
     def test_app_settings_can_hold_active_provider_reference(self) -> None:
         self.db.execute("INSERT INTO app_settings(key,value,updated_at) VALUES(?,?,?)", ('active_provider_id','provider-1','now'))
         self.assertEqual(self.db.execute("SELECT value FROM app_settings WHERE key='active_provider_id'").fetchone()[0], 'provider-1')
+
+
+    def test_context_ledger_is_task_scoped_hashed_and_append_only(self) -> None:
+        self.add_task()
+        self.add_task("task-2")
+        record = '{"id":"record-1","taskId":"task-1","preservation":"P1","text":"do not change auth"}'
+        digest = hashlib.sha256(record.encode()).hexdigest()
+        self.db.execute(
+            "INSERT INTO task_context_records(id,task_id,sequence,created_at,record_json,sha256) VALUES(?,?,?,?,?,?)",
+            ("record-1", "task-1", 1, "now", record, digest),
+        )
+        self.assertEqual(
+            self.db.execute("SELECT task_id,sequence,sha256 FROM task_context_records WHERE id='record-1'").fetchone(),
+            ("task-1", 1, digest),
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute("UPDATE task_context_records SET record_json='{}' WHERE id='record-1'")
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute(
+                "INSERT INTO task_context_records(id,task_id,sequence,created_at,record_json,sha256) VALUES(?,?,?,?,?,?)",
+                ("orphan-record", "missing-task", 1, "now", "{}", "0" * 64),
+            )
+
+    def test_context_snapshots_are_versioned_hash_checked_and_single_active(self) -> None:
+        self.add_task()
+        now = "2026-10-22T00:00:00Z"
+        first = '{"taskId":"task-1","version":1,"baseVersion":0,"activeRecordIds":["r1"],"archivedRecordIds":[],"auditPassed":true}'
+        first_hash = hashlib.sha256(first.encode()).hexdigest()
+        self.db.execute(
+            "INSERT INTO task_context_snapshots(task_id,version,base_version,created_at,status,snapshot_json,sha256) VALUES(?,?,?,?,?,?,?)",
+            ("task-1", 1, 0, now, "proposed", first, first_hash),
+        )
+        self.db.execute("UPDATE task_context_snapshots SET status='active' WHERE task_id='task-1' AND version=1")
+        second = '{"taskId":"task-1","version":2,"baseVersion":1,"activeRecordIds":["r1","r2"],"archivedRecordIds":[],"auditPassed":true}'
+        second_hash = hashlib.sha256(second.encode()).hexdigest()
+        self.db.execute(
+            "INSERT INTO task_context_snapshots(task_id,version,base_version,created_at,status,snapshot_json,sha256) VALUES(?,?,?,?,?,?,?)",
+            ("task-1", 2, 1, now, "proposed", second, second_hash),
+        )
+        self.db.execute("UPDATE task_context_snapshots SET status='superseded' WHERE task_id='task-1' AND status='active'")
+        self.db.execute("UPDATE task_context_snapshots SET status='active' WHERE task_id='task-1' AND version=2")
+        self.assertEqual(
+            self.db.execute("SELECT version FROM task_context_snapshots WHERE task_id='task-1' AND status='active'").fetchone()[0],
+            2,
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute("UPDATE task_context_snapshots SET snapshot_json='{}' WHERE task_id='task-1' AND version=2")
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute(
+                "INSERT INTO task_context_snapshots(task_id,version,base_version,created_at,status,snapshot_json,sha256) VALUES(?,?,?,?,?,?,?)",
+                ("task-1", 3, 1, now, "active", "{}", "0" * 64),
+            )
 
     def test_events_are_bound_to_tasks(self) -> None:
         self.add_task()

@@ -39,6 +39,17 @@ The current adapter supports the OpenAI-compatible `/models` diagnostic endpoint
 
 This adapter is not a universal LLM protocol. Native Anthropic/Gemini/etc. APIs, multimodal APIs and non-OpenAI tool calling need separate adapters and per-capability conformance tests.
 
+## Context Intelligence
+
+Cleanup Loop and Token Assist are core backend responsibilities, not renderer-side prompt utilities. The detailed preservation contract and release gates are in [Context Intelligence](CONTEXT_INTELLIGENCE.md).
+
+- **Token Assist:** runs in shadow mode before each model request. It records a low-confidence request estimate, prompt hash and provider-reported prompt usage. The active context snapshot is now the source used to reconstruct the request transcript. Model capacity/tokenizer remain unknown until a verified model profile is configured; never infer a 1M window from a model name.
+- **Context Health Auditor:** audits the durable transcript before each model request and final completion. It gates missing user messages, unproven factual memory, incomplete embedded tool-call/result pairs, non-durable checkpoints, pending approvals and uncertain side effects.
+- **Cleanup Loop:** assesses every safe request boundary. It reports a model-profile blocker and preserves the full context until a verified model-specific token budget is available. No approximate estimate causes messages to be omitted.
+- **Context ledger:** task-scoped, redacted and hash-checked records are append-only. The runtime synchronizes conversation messages into this ledger, activates a versioned snapshot and reconstructs the model request from that snapshot. Snapshot contents remain immutable; activation uses an expected-base-version check; restoring older state creates a new proposal rather than rewriting history.
+
+Automatic pruning, model-specific token counting and summarization remain disabled until their release gates pass. The browser preview has no deployed execution backend and does not invoke these services; privileged model/context operations remain behind the backend/runtime boundary.
+
 ## Lifecycle and recovery
 
 Window close asks the user whether to stop active work, keep it in the tray/background, or cancel closing. Safe quit requests cancellation and waits for runtime completions before closing SQLite. If that wait times out, Workbench stays open to avoid racing checkpoint writes. On restart, interrupted work is classified from checkpoint plus side-effect state; pending approvals expire. A possible side effect becomes `outcome_uncertain` and is not auto-replayed.

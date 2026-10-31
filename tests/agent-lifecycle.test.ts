@@ -1,4 +1,5 @@
 import test from 'node:test'
+import { readFileSync } from 'node:fs'
 import assert from 'node:assert/strict'
 import { AgentRuntime } from '../src/main/agent/runtime.ts'
 import type { TaskStore } from '../src/main/task-store.ts'
@@ -37,4 +38,20 @@ test('safe shutdown reports timeout rather than claiming tasks stopped', async (
   runtime.completions.set('task-2', new Promise<void>(() => undefined))
   assert.equal(await runtime.cancelAndWait(10), false)
   assert.equal(controller.signal.aborted, true)
+})
+
+const agentRuntimeSource = readFileSync(new URL('../src/main/agent/runtime.ts', import.meta.url), 'utf8')
+
+test('agent lifecycle loads the active context snapshot before every model request', () => {
+  assert.match(agentRuntimeSource, /const refreshContextSnapshot = \(\): void =>/)
+  assert.match(agentRuntimeSource, /getActiveContextSnapshot\(taskId\)/)
+  assert.match(agentRuntimeSource, /messages\.splice\(0, messages\.length/)
+  assert.match(agentRuntimeSource, /refreshContextSnapshot\(\)\s+const tokenAssistShadow/)
+})
+
+test('agent lifecycle audits Cleanup Loop at safe request boundaries and preserves full resume transcript', () => {
+  assert.match(agentRuntimeSource, /proposeContextCleanup\(/)
+  assert.match(agentRuntimeSource, /Cleanup Loop assessment/)
+  assert.match(agentRuntimeSource, /Array\.isArray\(parsed\.conversation\) \? parsed\.conversation : undefined/)
+  assert.doesNotMatch(agentRuntimeSource, /parsed\.conversation\.slice\(-80\)/)
 })

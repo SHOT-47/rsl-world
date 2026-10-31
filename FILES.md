@@ -2,20 +2,20 @@
 
 - `package.json`, `electron.vite.config.ts`, `tsconfig.json`, `.gitignore` — pinned direct dependency declarations and desktop build/test scripts; installation/lockfile still pending.
 - `src/main/index.ts`, `src/main/security.ts`, `src/shared/contracts.ts`, `src/preload/index.ts`, `src/preload/global.d.ts` — hardened Electron main and typed narrow IPC bridge.
-- `src/main/agent/**` — bounded model loop, tool broker, command/file policy and uncertain-side-effect reconciliation.
+- `src/main/agent/**` — bounded model loop, tool broker, command/file policy and uncertain-side-effect reconciliation; includes `context-intelligence.ts` for Token Assist shadow telemetry, preservation-aware context selection, health auditing and reversible cleanup proposals.
 - `src/main/providers/**` — OpenAI-compatible provider diagnostics/chat API and encrypted local provider settings.
-- `src/main/task-store.ts`, `src/main/task-state.ts`, `src/main/task-service.ts`, `src/main/policy.ts`, `src/main/redaction.ts` — task lifecycle, versioned checkpoint persistence, policy and redaction.
+- `src/main/task-store.ts`, `src/main/task-state.ts`, `src/main/task-service.ts`, `src/main/policy.ts`, `src/main/redaction.ts` — task lifecycle, versioned checkpoint persistence, append-only hash-checked context ledger, proposed/active snapshots, policy and redaction.
 - `src/main/runtime/python-worker.ts`, `workers/**` — managed Python JSON-lines worker and supervisor.
 - `src/main/rsl-integration.ts`, `src/main/workflows/rsl-investigation.ts`, `resources/reverse-skill-library/**` — bundled RSL validation, deterministic preflight, local-match awesome-reverse-engineered cache, case validator/export integration and v3.1 library.
 - `src/main/workflows/target-api.ts`, `src/main/workflows/target-api-workflow.ts` — native-consent, explicitly scoped, unauthenticated GET-only Target API flow and redacted evidence persistence.
-- `resources/schema/001_initial.sql`–`004_approval_details.sql` — versioned DB schema/migrations.
+- `resources/schema/001_initial.sql`–`007_context_intelligence.sql` — versioned DB schema/migrations, including append-only context records and immutable snapshot history.
 - `src/renderer/**` — chat-first UI for task management, providers, RSL validation/export and evidence.
 - `tests/security-contract.test.mjs` — 9 security boundary and source-contract tests, including index privacy/cache and Target API artifacts.
-- `tests/*.test.ts` — 69 runtime/policy/provider/worker/task/index/Target API/RSL workflow tests; includes `tests/awesome-index.test.ts` and `tests/rsl-workflow.test.ts`.
-- `tests/test_schema.py` — 8 SQLite contract tests.
+- `tests/*.test.ts` — 82 runtime/policy/provider/worker/task/index/Target API/RSL workflow and Context Intelligence tests; includes `tests/context-intelligence.test.ts` and `tests/context-ledger-store.test.ts`.
+- `tests/test_schema.py` — 10 SQLite contract tests, including context ledger and snapshot constraints.
 - `resources/reverse-skill-library/validation/test_*.py` — 37 RSL regression tests.
 - `scripts/verify_structure.py` — 48 structural/security/persistence/package assertions.
 - `scripts/check_typescript_syntax.mjs` — syntax transpilation for 35 TypeScript/TSX files; not a semantic typecheck.
-- `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/TESTING.md`, `docs/FEATURE_STATUS.md`, `docs/INTEGRATIONS.md` — architecture, threat model, current verification, feature status, source-attribution and integration gaps.
+- `docs/ARCHITECTURE.md`, `docs/CONTEXT_INTELLIGENCE.md`, `docs/SECURITY.md`, `docs/TESTING.md`, `docs/FEATURE_STATUS.md`, `docs/INTEGRATIONS.md` — architecture, context intelligence design, threat model, current verification, feature status, source-attribution and integration gaps.
 - `CHANGELOG.md` — v0.2.0-dev integration notes.
 - `STATE.md`, `DECISIONS.md`, `HANDOFF.md`, `WORK.md`, `PROJECT_GRAPH.md`, `INBOX.md`, `READ_LEDGER.md` — project state and continuation handoff.
