@@ -299,6 +299,7 @@ export function auditContext(input: {
   }
   for (const item of input.items.filter(item => selected.has(item.id))) {
     if (item.factualClaim && item.sourceRefs.length === 0) issues.push(`Factual item '${item.id}' has no provenance source.`)
+    if (item.toolRole && !item.toolCallId) issues.push(`Tool item '${item.id}' has no stable tool-call ID.`)
     if (item.toolRole === 'call') {
       if (item.toolState !== 'resolved') issues.push(`Tool call '${item.id}' is unresolved.`)
       const result = input.items.find(candidate => candidate.toolRole === 'result' && candidate.toolCallId === item.toolCallId)
@@ -360,7 +361,7 @@ export function proposeContextCleanup(input: {
   const duplicateOf: Record<string, string> = {}
   // Only P4/P5 are eligible for deterministic duplicate removal. P0-P3 are never deduplicated.
   for (const item of input.items.filter(item => active.has(item.id) && (item.preservation === 'P4' || item.preservation === 'P5'))) {
-    const normalized = item.text.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+    const normalized = item.text.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase()
     const key = `${item.kind}\u0000${normalized}`
     const existing = seen.get(key)
     if (existing && !item.required) {
