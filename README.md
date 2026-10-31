@@ -39,4 +39,4 @@ The full test suite still includes the original local-runtime contract tests; br
 
 ## Architecture proposal
 
-The proposed **Cleanup Loop** and **Token Assist** design is documented in [Context Intelligence](docs/CONTEXT_INTELLIGENCE.md). It is a backend architecture proposal, not a feature currently enabled in the browser preview.
+The **Cleanup Loop** and **Token Assist** architecture is documented in [Context Intelligence](docs/CONTEXT_INTELLIGENCE.md). Initial backend-side primitives now include Token Assist shadow telemetry, deterministic cleanup proposals, context-health gates, an append-only task context ledger and versioned snapshots. These are not exposed or executed by the browser preview; automatic compaction and model-specific tokenizer integration remain gated.
