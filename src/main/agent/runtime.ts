@@ -8,7 +8,7 @@ import { CODING_TOOLS, ToolBroker } from './tool-broker.ts'
 import { redactSecrets } from '../redaction.ts'
 import { runRslInvestigation } from '../workflows/rsl-investigation.ts'
 import { runTargetApiWorkflow } from '../workflows/target-api-workflow.ts'
-import { createTokenAssistShadowReport, reconcileTokenUsage } from './context-intelligence.ts'
+import { auditContext, createTokenAssistShadowReport, reconcileTokenUsage, type ContextItem } from './context-intelligence.ts'
 
 const MAX_TURNS = 16
 const MAX_TOOL_CALLS = 32
@@ -94,7 +94,7 @@ export class AgentRuntime {
         this.failQueuedTask(taskId, 'The checkpoint records a potentially incomplete side effect. Reconcile it before retrying.');
         return false
       }
-      const transcript = Array.isArray(parsed.conversation) ? parsed.conversation.slice(-80) : undefined
+      const transcript = Array.isArray(parsed.conversation) ? parsed.conversation : undefined
       state = {
         status: record.status, stage: parsed.stage ?? 'planning', promptRedacted: parsed.promptRedacted === true,
         capabilityDetectionRequired: parsed.capabilityDetectionRequired !== false, priorArtCheckRequired: parsed.priorArtCheckRequired === true, operationInFlight: false,
@@ -292,6 +292,121 @@ export class AgentRuntime {
         .flatMap(message => (message.tool_calls ?? []).filter(call => !responded.has(call.id)))
     }
 
+    /**
+     * Synchronizes the durable transcript into the append-only context ledger, audits it,
+     * activates a versioned snapshot, then reconstructs the model transcript from that snapshot.
+     * No item is omitted in this lifecycle integration slice; compaction waits for verified
+     * model-specific token accounting.
+     */
+    const refreshContextSnapshot = (): void => {
+      const safeTranscript = this.checkpointConversation(messages)
+      state.conversation = safeTranscript
+      this.store.writeCheckpoint(taskId, state, 'Conversation checkpointed before Context Intelligence audit.')
+      this.onEvent(taskId)
+
+      const existing = this.store.listContextRecords(taskId, 10_000)
+      const knownSources = new Set(existing.flatMap(record => record.sourceRefs))
+      const answeredToolCalls = new Set(safeTranscript
+        .filter(message => message.role === 'tool' && message.tool_call_id)
+        .map(message => message.tool_call_id as string))
+
+      for (let index = 0; index < safeTranscript.length; index++) {
+        const message = safeTranscript[index]!
+        if (message.role === 'system') continue
+        const serialized = JSON.stringify(message)
+        const digest = createHash('sha256').update(serialized, 'utf8').digest('hex').slice(0, 24)
+        const sourceRef = `transcript-message:${index}:${digest}`
+        if (knownSources.has(sourceRef)) continue
+
+        const embeddedCalls = message.role === 'assistant' ? (message.tool_calls ?? []).map(call => call.id) : []
+        const hasUnresolvedCalls = embeddedCalls.some(id => !answeredToolCalls.has(id))
+        const parentCallExists = message.role === 'tool' && safeTranscript.some(candidate =>
+          candidate.role === 'assistant' && candidate.tool_calls?.some(call => call.id === message.tool_call_id))
+        const preservation = message.role === 'user' ? 'P1'
+          : (hasUnresolvedCalls || (message.role === 'tool' && !parentCallExists)) ? 'P2'
+          : 'P4'
+        this.store.appendContextRecord(taskId, {
+          kind: 'conversation_message',
+          preservation,
+          text: serialized,
+          sourceRefs: [sourceRef],
+          factualClaim: false,
+          required: message.role === 'user' || hasUnresolvedCalls || (message.role === 'tool' && !parentCallExists)
+        }, false)
+        knownSources.add(sourceRef)
+      }
+
+      const records = this.store.listContextRecords(taskId, 10_000)
+      const conversationRecords = records.filter(record => record.kind === 'conversation_message')
+      const contextItems: ContextItem[] = conversationRecords.map(record => {
+        let message: ChatMessage
+        try { message = JSON.parse(record.text) as ChatMessage }
+        catch { throw new Error(`Context record '${record.id}' could not be parsed; previous context remains authoritative.`) }
+        if (!message || !['user', 'assistant', 'tool'].includes(message.role)) {
+          throw new Error(`Context record '${record.id}' has an invalid conversation role.`)
+        }
+        return {
+          id: record.id, kind: record.kind, text: record.text,
+          preservation: record.preservation, sourceRefs: record.sourceRefs,
+          factualClaim: record.factualClaim, required: record.required,
+          ...(message.role === 'assistant' && message.tool_calls?.length
+            ? { embeddedToolCallIds: message.tool_calls.map(call => call.id) } : {}),
+          ...(message.role === 'tool' && message.tool_call_id
+            ? { toolResultCallId: message.tool_call_id } : {})
+        }
+      })
+      const boundary = {
+        checkpointDurable: true,
+        operationInFlight: state.operationInFlight,
+        sideEffectState: state.sideEffectState,
+        pendingApprovalCount: state.pendingApprovalIds.length
+      }
+      const selectedIds = contextItems.map(item => item.id)
+      const audit = auditContext({ items: contextItems, selectedItemIds: selectedIds, boundary })
+      if (!audit.passed) {
+        const detail = audit.issues.join(' ')
+        event('Context health audit blocked', detail, 'warning')
+        throw new Error(`Context Intelligence blocked the next model request: ${detail}`)
+      }
+
+      const recordIds = records.map(record => record.id)
+      let activeSnapshot = this.store.getActiveContextSnapshot(taskId)
+      const unchanged = activeSnapshot
+        && activeSnapshot.activeRecordIds.length === recordIds.length
+        && activeSnapshot.activeRecordIds.every((id, index) => id === recordIds[index])
+      if (!unchanged) {
+        const expectedVersion = activeSnapshot?.version ?? 0
+        const proposal = this.store.createContextSnapshot(taskId, {
+          expectedActiveVersion: expectedVersion,
+          activeRecordIds: recordIds,
+          archivedRecordIds: [],
+          reason: 'Lifecycle synchronization: preserve the full audited transcript until a verified model tokenizer and safe compaction policy are available.',
+          auditPassed: true,
+          boundary
+        })
+        activeSnapshot = this.store.activateContextSnapshot(taskId, proposal.version, expectedVersion, boundary, audit.passed)
+        event('Context snapshot activated',
+          `Version ${activeSnapshot.version} · ${conversationRecords.length} conversation records · all source records retained.`, 'status')
+      }
+
+      const verifiedSnapshot = this.store.getActiveContextSnapshot(taskId)
+      if (!verifiedSnapshot) throw new Error('No active context snapshot is available after lifecycle synchronization.')
+      const activeIds = new Set(verifiedSnapshot.activeRecordIds)
+      const restoredMessages = records
+        .filter(record => record.kind === 'conversation_message' && activeIds.has(record.id))
+        .map(record => {
+          try { return JSON.parse(record.text) as ChatMessage }
+          catch { throw new Error(`Active context record '${record.id}' is invalid; no model request was sent.`) }
+        })
+      messages.splice(0, messages.length, { role: 'system', content: SYSTEM_PROMPT }, ...restoredMessages)
+      state.conversation = this.checkpointConversation(messages)
+      this.store.writeCheckpoint(taskId, state, `Active context snapshot ${verifiedSnapshot.version} loaded from the task ledger.`)
+      this.onEvent(taskId)
+      if (messages.length > 80) {
+        throw new Error('The active conversation exceeds the provider adapter 80-message limit. Context is preserved in the ledger; no messages were silently discarded.')
+      }
+    }
+
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       if (signal.aborted) throw new Error('Task cancelled.')
       if (Date.now() - started > MAX_WALL_MS) throw new Error(`Task exceeded the ${MAX_WALL_MS / 1000}-second runtime limit.`)
@@ -304,6 +419,7 @@ export class AgentRuntime {
         continue
       }
 
+      refreshContextSnapshot()
       const tokenAssistShadow = createTokenAssistShadowReport({
         requestText: JSON.stringify({ model: provider.model, messages, tools: CODING_TOOLS, max_tokens: 4096 })
       })
@@ -324,6 +440,8 @@ export class AgentRuntime {
         state.operationInFlight = false
         state.sideEffectState = state.sideEffectState === 'possible' ? 'possible' : (state.sideEffectState === 'none' ? 'none' : 'known_complete')
         state.notes = [...state.notes, 'Agent finished the interaction loop. Independent correctness and security review remain the user/release gate.'].slice(-50)
+        await setStatus('running', 'verification', 'Final assistant response checkpointed before the completion health audit.')
+        refreshContextSnapshot()
         await setStatus('succeeded', 'verification', finalContent.slice(0, 2000))
         event('Agent task finished', `${finalContent.slice(0, 700)}${finalContent.length > 700 ? '…' : ''} (Completion is not equivalent to independent verification.)`, 'status')
         return
