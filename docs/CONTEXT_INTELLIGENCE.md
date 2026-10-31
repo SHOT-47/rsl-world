@@ -392,7 +392,20 @@ The inspected `web-browser-migration` branch contains the original agent-runtime
 - `TaskStore` adds redacted, hash-checked context record append/read operations, safe-boundary-gated snapshot proposal, compare-and-swap activation and integrity-checked active snapshot reads.
 - `tests/context-intelligence.test.ts` and expanded `tests/test_schema.py` cover the deterministic planner, preservation/provenance/tool-pair gates, cleanup rollback behavior and database constraints.
 
-This is the first backend implementation slice, not the full feature. Token estimates are deliberately low-confidence until a verified provider/model tokenizer profile is integrated. The cleanup proposal is not automatically activated by the agent loop yet. No model-assisted summarization, semantic retrieval, user-facing context dashboard or browser-preview execution is claimed.
+### Agent lifecycle integration on `web-browser-migration`
+
+The current runtime integration now performs the following at every safe pre-inference boundary and before final task success:
+
+1. Redacts and durably checkpoints the current conversation.
+2. Appends new conversation messages to the task-scoped context ledger using stable transcript source references.
+3. Audits user messages, ledger provenance and complete assistant-tool-call/tool-result pairs.
+4. Runs the Cleanup Loop assessment. With no verified model/tokenizer budget it records a blocker and preserves every active record.
+5. Creates and activates a versioned snapshot with compare-and-swap protection.
+6. Reconstructs the model request transcript exclusively from the active snapshot, while re-inserting the immutable runtime system prompt.
+
+Resume no longer silently trims the checkpoint transcript to the last 80 messages. If the reconstructed conversation exceeds the provider adapter's current 80-message request limit, the task stops with an explicit context-preservation blocker rather than discarding older user instructions. This does not yet compact the conversation.
+
+This is the first backend implementation slice, not the full feature. Token estimates are deliberately low-confidence until a verified provider/model tokenizer profile is integrated. The full-context snapshot is activated by the agent loop; a reduced/compacted proposal is not activated while the model token budget remains unverified. No model-assisted summarization, semantic retrieval, user-facing context dashboard or browser-preview execution is claimed.
 
 The source baseline also shows:
 
