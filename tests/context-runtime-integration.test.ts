@@ -73,7 +73,7 @@ test('agent requests are rebuilt from the active snapshot and archived records s
       ) => Promise<void>
     }
     await invoke.runTask(
-      { id: task.id, projectRoot: workspaceRoot, prompt: task.prompt, mode: 'coding' },
+      { id: task.id, projectRoot: workspaceRoot, prompt: 'Preserve the current user request.', mode: 'coding' },
       {
         id: 'provider-test', name: 'loopback-test', kind: 'local',
         baseUrl: `http://127.0.0.1:${address.port}/v1`, model: 'test-model', apiKey: null
