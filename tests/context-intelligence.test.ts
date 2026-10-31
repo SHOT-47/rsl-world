@@ -124,3 +124,30 @@ test('cleanup proposal keeps previous state if a factual summary has lost proven
   assert.deepEqual(proposal.activeItemIds, ['fact'])
   assert.equal(proposal.archivedItemIds.length, 0)
 })
+
+test('health audit requires assistant tool calls and tool results to remain paired', () => {
+  const parent = item({
+    id: 'assistant-tools', text: 'assistant requested tools', preservation: 'P4',
+    embeddedToolCallIds: ['call-1', 'call-2']
+  })
+  const result1 = item({
+    id: 'tool-result-1', text: 'result one', preservation: 'P4', toolResultCallId: 'call-1'
+  })
+  const result2 = item({
+    id: 'tool-result-2', text: 'result two', preservation: 'P4', toolResultCallId: 'call-2'
+  })
+  const passed = auditContext({
+    items: [parent, result1, result2],
+    selectedItemIds: ['assistant-tools', 'tool-result-1', 'tool-result-2'],
+    boundary: safeBoundary
+  })
+  assert.equal(passed.passed, true)
+
+  const missing = auditContext({
+    items: [parent, result1],
+    selectedItemIds: ['assistant-tools', 'tool-result-1'],
+    boundary: safeBoundary
+  })
+  assert.equal(missing.passed, false)
+  assert.ok(missing.issues.some(issue => issue.includes("call-2")))
+})
