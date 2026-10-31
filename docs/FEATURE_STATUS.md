@@ -2,6 +2,7 @@
 
 | Feature | Status | Evidence / limitation |
 |---|---|---|
+| Context Intelligence (Cleanup Loop + Token Assist) | Initial backend primitives implemented; shadow mode only | Token Assist records low-confidence preflight estimates and reconciles provider prompt usage; deterministic cleanup proposal and hard context audit are available in agent source. No automatic prompt mutation, persistent context ledger or browser-preview execution is enabled. |
 | Electron + React secure shell | Source implemented; runtime build pending | Source contract tests pass; dependencies unavailable for launch/build |
 | Typed IPC + sandboxed renderer | Implemented in source | 7 source contract tests; still needs real Electron integration test |
 | Local project/session database | Implemented in source | 6 migrations and 8 schema tests; native `better-sqlite3` binding not run here |
