@@ -403,16 +403,20 @@ The current runtime integration now performs the following at every safe pre-inf
 5. Creates and activates a versioned snapshot with compare-and-swap protection.
 6. Reconstructs the model request transcript exclusively from the active snapshot, while re-inserting the immutable runtime system prompt.
 
-Resume no longer silently trims the checkpoint transcript to the last 80 messages. If the reconstructed conversation exceeds the provider adapter's current 80-message request limit, the task stops with an explicit context-preservation blocker rather than discarding older user instructions. This does not yet compact the conversation.
+Snapshot synchronization is incremental and resume-safe: records represented by the prior snapshot remain in their prior active/archived state; only ledger records added after that snapshot are admitted into the next active view. This also recovers ledger entries written just before a crash interrupted snapshot activation. Missing or overlapping snapshot references fail closed. Mandatory P0–P2 and explicitly required records cannot be archived even when a stale snapshot incorrectly marks them inactive.
 
-This is the first backend implementation slice, not the full feature. Token estimates are deliberately low-confidence until a verified provider/model tokenizer profile is integrated. The full-context snapshot is activated by the agent loop; a reduced/compacted proposal is not activated while the model token budget remains unverified. No model-assisted summarization, semantic retrieval, user-facing context dashboard or browser-preview execution is claimed.
+Resume no longer silently trims the checkpoint transcript to the last 80 messages. If the reconstructed conversation exceeds the provider adapter's current 80-message request limit, the task stops with an explicit context-preservation blocker rather than discarding older user instructions. The current chat adapter also enforces a 500 KB request payload cap; neither limit is yet resolved by automatic compaction.
 
-The source baseline also shows:
+This is the live lifecycle integration slice, not the full feature. Token estimates remain deliberately low-confidence until a verified provider/model tokenizer profile is integrated. The runtime activates a full-context snapshot and reconstructs model requests from it, but it does not activate a reduced/compacted proposal while the model token budget remains unverified. No model-assisted summarization, semantic retrieval, user-facing context dashboard or browser-preview execution is claimed.
 
-- `src/main/agent/runtime.ts` bounds the conversation transcript at `MAX_TRANSCRIPT_BYTES = 900_000` and stops the task if the checkpoint exceeds that limit. It does not yet perform semantic, reversible context compaction.
-- Tool messages are character-limited before being passed back to the model. This is a payload bound, not a model-token budget or relevance decision.
-- `src/main/providers/chat-completions.ts` exposes provider-reported prompt/completion/total usage after a request, but the current provider config does not expose a verified model context-window/tokenizer capability profile or a preflight token-count step.
-- Task checkpoints hash the serialized state, which provides a useful base for versioned context snapshots, but the proposed context ledger, per-item provenance and compaction rollback are not implemented.
+The latest native runtime integration test exercises an actual AgentRuntime call against a loopback OpenAI-compatible mock and a real SQLite TaskStore. It verifies the user request is sent, the model request is reconstructed from active snapshot records, a previously archived record is not reintroduced, and the assistant's final answer is persisted before the task is marked succeeded. This is a successful-flow integration test, not a forced process-crash/restart test.
+
+Remaining constraints:
+
+- src/main/agent/runtime.ts bounds the transcript checkpoint at MAX_TRANSCRIPT_BYTES = 900_000 bytes and stops the task if the checkpoint exceeds that limit.
+- Tool outputs are character-limited before being returned to the model. This is a payload guard, not model-token accounting or a semantic relevance decision.
+- src/main/providers/chat-completions.ts exposes provider-reported prompt/completion/total token usage after inference, but provider configuration still has no verified model context-window/tokenizer capability profile or exact preflight token-count adapter.
+- Automatic reduced-context activation, model-assisted summaries, semantic retrieval, and crash/restart fault-injection coverage remain outstanding.
 
 The browser preview must remain a safe UI shell. Actual model execution, context persistence, compaction, secret handling and task isolation belong in a separately deployed authenticated backend with the existing workspace, policy, approval, checkpoint and audit controls. Do not expose privileged context or execution operations directly to browser code.
 
