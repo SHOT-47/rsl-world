@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   auditContext, calculateTokenBudget, createTokenAssistShadowReport, estimatePromptTokensHeuristically,
-  getContextHealthSummary, planContextSelection, proposeContextCleanup, reconcileTokenUsage,
+  extendContextSnapshotSelection, getContextHealthSummary, planContextSelection, proposeContextCleanup, reconcileTokenUsage,
   type ContextItem, type ContextBoundaryState, type TokenAssistShadowReport
 } from '../src/main/agent/context-intelligence.ts'
 
@@ -123,6 +123,27 @@ test('cleanup proposal keeps previous state if a factual summary has lost proven
   assert.equal(proposal.candidateHash, null)
   assert.deepEqual(proposal.activeItemIds, ['fact'])
   assert.equal(proposal.archivedItemIds.length, 0)
+})
+
+test('snapshot extension keeps archived records archived and admits post-snapshot ledger additions', () => {
+  const selection = extendContextSnapshotSelection({
+    recordIds: ['user-prompt', 'old-note', 'tool-history', 'new-assistant-message'],
+    previous: {
+      activeRecordIds: ['user-prompt', 'tool-history'],
+      archivedRecordIds: ['old-note']
+    }
+  })
+  assert.deepEqual(selection.activeRecordIds, ['user-prompt', 'tool-history', 'new-assistant-message'])
+  assert.deepEqual(selection.archivedRecordIds, ['old-note'])
+})
+
+test('snapshot extension fails closed when a prior snapshot has missing or overlapping record IDs', () => {
+  assert.throws(() => extendContextSnapshotSelection({
+    recordIds: ['known'], previous: { activeRecordIds: ['missing'], archivedRecordIds: [] }
+  }), /missing ledger record/)
+  assert.throws(() => extendContextSnapshotSelection({
+    recordIds: ['known'], previous: { activeRecordIds: ['known'], archivedRecordIds: ['known'] }
+  }), /overlapping/)
 })
 
 test('health audit does not allow a stale snapshot to archive mandatory records', () => {
