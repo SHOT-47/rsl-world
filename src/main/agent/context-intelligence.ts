@@ -59,6 +59,8 @@ export interface ContextItem {
   toolCallId?: string
   toolRole?: ToolContextRole
   toolState?: 'pending' | 'resolved'
+  embeddedToolCallIds?: string[]
+  toolResultCallId?: string
 }
 
 export interface ContextBoundaryState {
