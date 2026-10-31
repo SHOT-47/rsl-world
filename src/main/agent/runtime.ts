@@ -305,6 +305,12 @@ export class AgentRuntime {
       this.onEvent(taskId)
 
       const existing = this.store.listContextRecords(taskId, 10_000)
+      const activeSnapshotBeforeSync = this.store.getActiveContextSnapshot(taskId)
+      const snapshotCoveredRecordIds = new Set([
+        ...(activeSnapshotBeforeSync?.activeRecordIds ?? []),
+        ...(activeSnapshotBeforeSync?.archivedRecordIds ?? [])
+      ])
+      const newlyAppendedRecordIds: string[] = []
       const knownSources = new Set(existing.flatMap(record => record.sourceRefs))
       const answeredToolCalls = new Set(safeTranscript
         .filter(message => message.role === 'tool' && message.tool_call_id)
@@ -325,7 +331,7 @@ export class AgentRuntime {
         const preservation = message.role === 'user' ? 'P1'
           : (hasUnresolvedCalls || (message.role === 'tool' && !parentCallExists)) ? 'P2'
           : 'P4'
-        this.store.appendContextRecord(taskId, {
+        const appendedRecord = this.store.appendContextRecord(taskId, {
           kind: 'conversation_message',
           preservation,
           text: serialized,
@@ -333,6 +339,7 @@ export class AgentRuntime {
           factualClaim: false,
           required: message.role === 'user' || hasUnresolvedCalls || (message.role === 'tool' && !parentCallExists)
         }, false)
+        newlyAppendedRecordIds.push(appendedRecord.id)
         knownSources.add(sourceRef)
       }
 
