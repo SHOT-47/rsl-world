@@ -41,14 +41,14 @@ This adapter is not a universal LLM protocol. Native Anthropic/Gemini/etc. APIs,
 
 ## Context Intelligence
 
-Cleanup Loop and Token Assist are core backend responsibilities, not renderer-side prompt utilities. Their detailed contract, preservation classes and staged release gates are in [Context Intelligence](CONTEXT_INTELLIGENCE.md).
+Cleanup Loop and Token Assist are core backend responsibilities, not renderer-side prompt utilities. The detailed preservation contract and release gates are in [Context Intelligence](CONTEXT_INTELLIGENCE.md).
 
-- **Token Assist:** currently runs in shadow mode in the agent runtime. It records a low-confidence request-size/token estimate, a prompt hash and the provider-reported prompt usage after inference. It does not change the request. Model capacity and tokenizer are unknown unless supplied through an explicit, verified model profile; never infer a 1M context window from a model name.
-- **Context Health Auditor:** hard-gates missing protected records, unproven factual claims, incomplete tool-call/result pairs, non-durable checkpoints, pending approvals and uncertain side effects.
-- **Cleanup Loop:** proposes a smaller active context using preservation classes P0–P5. P0–P2 and explicitly required items are retained; only low-preservation P4/P5 duplicate material can be deterministically deduplicated. Cleanup changes the active view, not the source ledger.
-- **Context ledger:** task-scoped, redacted and hash-checked records are append-only. Context snapshots are versioned; content is immutable, only one snapshot can be active per task, and activation uses an expected-base-version check. Restoring older state creates a new proposal rather than rewriting history.
+- **Token Assist:** runs in shadow mode before each model request. It records a low-confidence request estimate, prompt hash and provider-reported prompt usage. The active context snapshot is now the source used to reconstruct the request transcript. Model capacity/tokenizer remain unknown until a verified model profile is configured; never infer a 1M window from a model name.
+- **Context Health Auditor:** audits the durable transcript before each model request and final completion. It gates missing user messages, unproven factual memory, incomplete embedded tool-call/result pairs, non-durable checkpoints, pending approvals and uncertain side effects.
+- **Cleanup Loop:** assesses every safe request boundary. It reports a model-profile blocker and preserves the full context until a verified model-specific token budget is available. No approximate estimate causes messages to be omitted.
+- **Context ledger:** task-scoped, redacted and hash-checked records are append-only. The runtime synchronizes conversation messages into this ledger, activates a versioned snapshot and reconstructs the model request from that snapshot. Snapshot contents remain immutable; activation uses an expected-base-version check; restoring older state creates a new proposal rather than rewriting history.
 
-The initial implementation is intentionally incomplete: proposal-to-activation is not wired into the live task loop, model-specific token counting is not integrated, and automatic compaction is disabled. The current browser preview has no deployed execution backend and does not invoke these services. These controls must remain behind the authenticated backend/runtime boundary.
+Automatic pruning, model-specific token counting and summarization remain disabled until their release gates pass. The browser preview has no deployed execution backend and does not invoke these services; privileged model/context operations remain behind the backend/runtime boundary.
 
 ## Lifecycle and recovery
 
