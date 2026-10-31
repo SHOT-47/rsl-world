@@ -24,7 +24,7 @@
 8. **RSL preflight/index:** parsing of the public index, local-only query matching, secret-term removal, URL validation, cache checksum/TTL/ETag, refresh failures, consent/review gates, bundled route resolver and case validator.
 9. **Target API:** explicit authorization, relative-path checks, public DNS pinning, GET-only/no-auth/no-redirect, response-size bounds, JSON-aware redaction, evidence persistence and uncertain timeout behavior.
 10. **RSL library:** package checker, case-validator failure paths, evidence hash/reference/drift tests and export smoke tests for all ten declared profiles.
-11. **Context Intelligence:** model-capacity budgeting, low-confidence shadow token estimates, provider usage reconciliation, protected-context selection, provenance checks, tool-call/result pairing, reversible cleanup proposals, duplicate handling and unsafe-boundary blocking.
+11. **Context Intelligence:** model-budget shadow telemetry, provider usage reconciliation, task-ledger synchronization, active-snapshot-driven request reconstruction, user-intent preservation, embedded tool-call/result pairing, Cleanup Loop safe-boundary assessment, versioned snapshot activation/restore and lifecycle regression checks.
 
 ## Verified offline results for v0.2.0-dev
 
