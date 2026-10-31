@@ -303,7 +303,7 @@ export class TaskStore {
     if (!this.getTask(taskId)) throw new Error('Context record references an unknown task.')
     if (!input || typeof input !== 'object' || typeof input.kind !== 'string' || !input.kind.trim() || input.kind.length > 100) throw new Error('Context record kind is invalid.')
     if (!['P0', 'P1', 'P2', 'P3', 'P4', 'P5'].includes(input.preservation)) throw new Error('Context preservation class is invalid.')
-    if (typeof input.text !== 'string' || Buffer.byteLength(input.text, 'utf8') > 256_000) throw new Error('Context record text exceeds the 256 KB limit.')
+    if (typeof input.text !== 'string' || Buffer.byteLength(input.text, 'utf8') > 900_000) throw new Error('Context record text exceeds the 256 KB limit.')
     if (!Array.isArray(input.sourceRefs) || input.sourceRefs.length > 100 || input.sourceRefs.some(ref => typeof ref !== 'string' || !ref.trim() || ref.length > 1024)) throw new Error('Context record source references are invalid.')
     if (input.factualClaim === true && input.sourceRefs.length === 0) throw new Error('Factual context records require at least one provenance source.')
     if (input.toolRole && (!input.toolCallId || input.toolCallId.length > 200)) throw new Error('Tool context records require a stable tool-call ID.')
