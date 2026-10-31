@@ -311,6 +311,14 @@ export function auditContext(input: {
       const call = input.items.find(candidate => candidate.toolRole === 'call' && candidate.toolCallId === item.toolCallId)
       if (!call || !selected.has(call.id)) issues.push(`Tool result '${item.id}' has no selected matching call.`)
     }
+    for (const callId of item.embeddedToolCallIds ?? []) {
+      const result = input.items.find(candidate => candidate.toolResultCallId === callId)
+      if (!result || !selected.has(result.id)) issues.push(`Assistant message '${item.id}' is missing tool result '${callId}'.`)
+    }
+    if (item.toolResultCallId) {
+      const parent = input.items.find(candidate => (candidate.embeddedToolCallIds ?? []).includes(item.toolResultCallId as string))
+      if (!parent || !selected.has(parent.id)) issues.push(`Tool result '${item.id}' has no selected assistant tool-call message.`)
+    }
   }
 
   if (!input.boundary.checkpointDurable) issues.push('The latest task checkpoint is not durable.')
