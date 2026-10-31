@@ -299,7 +299,7 @@ export class TaskStore {
   }
 
 
-  appendContextRecord(taskId: string, input: ContextLedgerRecordInput): ContextLedgerRecord {
+  appendContextRecord(taskId: string, input: ContextLedgerRecordInput, emitEvent = true): ContextLedgerRecord {
     if (!this.getTask(taskId)) throw new Error('Context record references an unknown task.')
     if (!input || typeof input !== 'object' || typeof input.kind !== 'string' || !input.kind.trim() || input.kind.length > 100) throw new Error('Context record kind is invalid.')
     if (!['P0', 'P1', 'P2', 'P3', 'P4', 'P5'].includes(input.preservation)) throw new Error('Context preservation class is invalid.')
@@ -332,7 +332,7 @@ export class TaskStore {
       return record
     })
     const record = transaction()
-    this.recordTaskEvent(taskId, 'activity', 'Context ledger record appended', `${record.kind} · ${record.preservation} · record ${record.id}`)
+    if (emitEvent) this.recordTaskEvent(taskId, 'activity', 'Context ledger record appended', `${record.kind} · ${record.preservation} · record ${record.id}`)
     return record
   }
 
