@@ -8,6 +8,7 @@ import { CODING_TOOLS, ToolBroker } from './tool-broker.ts'
 import { redactSecrets } from '../redaction.ts'
 import { runRslInvestigation } from '../workflows/rsl-investigation.ts'
 import { runTargetApiWorkflow } from '../workflows/target-api-workflow.ts'
+import { createTokenAssistShadowReport, reconcileTokenUsage } from './context-intelligence.ts'
 
 const MAX_TURNS = 16
 const MAX_TOOL_CALLS = 32
@@ -303,7 +304,15 @@ export class AgentRuntime {
         continue
       }
 
+      const tokenAssistShadow = createTokenAssistShadowReport({
+        requestText: JSON.stringify({ model: provider.model, messages, tools: CODING_TOOLS, max_tokens: 4096 })
+      })
+      event('Token Assist shadow analysis',
+        `Estimated prompt size: ${tokenAssistShadow.estimatedPromptTokens} heuristic tokens (low confidence) · ${tokenAssistShadow.requestBytes} bytes · model capacity: unknown · recommendation: ${tokenAssistShadow.recommendation} · request unchanged.`)
       const response = await requestChatCompletion(provider, messages, CODING_TOOLS, { timeoutMs: 60_000, maxTokens: 4096, signal })
+      const tokenObservation = reconcileTokenUsage(tokenAssistShadow, response.usage.promptTokens)
+      event('Token Assist usage reconciliation',
+        `Estimated: ${tokenObservation.estimatedPromptTokens} · provider prompt usage: ${tokenObservation.actualPromptTokens ?? 'unreported'} · absolute estimate error: ${tokenObservation.absoluteErrorTokens ?? 'unknown'} · shadow mode; no context was changed.`)
       event('Model response received', `${response.toolCalls.length} tool call(s); token usage reported: ${response.usage.totalTokens ?? 'unknown'}.`)
 
       if (response.toolCalls.length === 0) {

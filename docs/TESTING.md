@@ -24,24 +24,25 @@
 8. **RSL preflight/index:** parsing of the public index, local-only query matching, secret-term removal, URL validation, cache checksum/TTL/ETag, refresh failures, consent/review gates, bundled route resolver and case validator.
 9. **Target API:** explicit authorization, relative-path checks, public DNS pinning, GET-only/no-auth/no-redirect, response-size bounds, JSON-aware redaction, evidence persistence and uncertain timeout behavior.
 10. **RSL library:** package checker, case-validator failure paths, evidence hash/reference/drift tests and export smoke tests for all ten declared profiles.
+11. **Context Intelligence:** model-capacity budgeting, low-confidence shadow token estimates, provider usage reconciliation, protected-context selection, provenance checks, tool-call/result pairing, reversible cleanup proposals, duplicate handling and unsafe-boundary blocking.
 
 ## Verified offline results for v0.2.0-dev
 
 Each suite below completed independently; the counts should not be interpreted as one aggregate command succeeding:
 
-- **69 TypeScript runtime/unit/contract tests passed.**
+- **82 TypeScript runtime/unit/contract tests passed**, including 13 Context Intelligence tests and two native `TaskStore` snapshot/restore integration tests.
 - **9 JavaScript source-contract tests passed.**
-- **8 SQLite schema tests passed** using Python's SQLite engine (not the native `better-sqlite3` binding).
+- **10 SQLite schema tests passed** using Python's SQLite engine, including migration 007 context-ledger/snapshot constraints (not a native `better-sqlite3` TaskStore integration test).
 - **37 RSL regression tests passed.**
-- **48 Workbench structural/security/persistence/package assertions passed.**
+- **16 browser architecture structural/security assertions passed.**
 - **370 RSL static/schema assertions passed**; 20 Agent Skills manifests, 19 module files, 10 adapter profiles, 31 capability categories, 10 routes, 8 freshness feeds, 18 YAML and 6 JSON files parsed/validated.
-- **35 TypeScript/TSX files passed syntax transpilation.** This catches syntax diagnostics, not TypeScript type errors.
+- **Strict TypeScript typecheck passed** and **Vite browser asset build passed** in GitHub Actions.
 
-Total independently passed executable tests: **123** (69 + 9 + 8 + 37). Structural assertions are additional and are not counted as executable tests.
+Total passed executable tests in CI: **138** (82 TypeScript + 9 JavaScript + 10 SQLite schema + 37 RSL). Structural assertions are additional and are not counted as executable tests.
 
 ## Not verified here
 
-npm registry access timed out and `node_modules` is absent. No `package-lock.json` has been generated. Therefore the semantic TypeScript typecheck, Electron/Vite build, native `better-sqlite3` rebuild, GUI startup and Windows installer were not run. The execution environment is Linux, not a substitute for Windows 10/11 testing. No real app request to the public index was performed in this environment; index protocol/cache behavior is mock-tested. No live commercial coding-agent/MCP client matrix, live provider call, adversarial red-team, hostile binary sandbox test or controlled performance benchmark has run.
+GitHub Actions ran `npm ci`, browser static checks, `npm test`, strict `npm run typecheck` and `npm run build` successfully on the implementation branch. The SQLite schema suite uses Python's SQLite engine, and native `TaskStore` append/propose/activate/restore/gate integration tests also pass. Full crash/restart recovery across all context lifecycle boundaries remains unverified. No live provider call, model-specific tokenizer/preflight integration, commercial coding-agent/MCP conformance, adversarial red-team, hostile binary sandbox test or controlled performance benchmark has run. Token Assist currently uses a low-confidence heuristic in shadow mode because no verified per-model context/tokenizer profile is wired into provider configuration. Cleanup Loop creates deterministic proposals; TaskStore persists hash-checked ledger records and proposed/active snapshots, but proposal-to-activation is not yet wired into the live agent lifecycle. Source records are append-only and are not deleted by cleanup.
 
 ## Required before public/production release
 

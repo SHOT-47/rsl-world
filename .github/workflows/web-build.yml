@@ -25,6 +25,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Check browser architecture
         run: npm run test:static
+      - name: Run unit and regression tests
+        run: npm test
       - name: Typecheck
         run: npm run typecheck
       - name: Build browser assets

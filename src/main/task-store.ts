@@ -45,6 +45,53 @@ export interface ApprovalRecord extends ApprovalPreview {
 
 export interface TaskExecutionRecord { id: string; projectRoot: string; title: string; prompt: string; mode: TaskSummary['mode']; status: TaskStatus; checkpointVersion: number; workflowConfig: TaskWorkflowConfig }
 
+export interface ContextLedgerRecordInput {
+  kind: string
+  preservation: 'P0' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5'
+  text: string
+  sourceRefs: string[]
+  factualClaim?: boolean
+  required?: boolean
+  toolCallId?: string
+  toolRole?: 'call' | 'result'
+  toolState?: 'pending' | 'resolved'
+}
+export interface ContextLedgerRecord extends ContextLedgerRecordInput {
+  id: string
+  taskId: string
+  sequence: number
+  createdAt: string
+  text: string
+  factualClaim: boolean
+  required: boolean
+}
+export interface ContextSnapshotBoundary {
+  checkpointDurable: boolean
+  operationInFlight: boolean
+  sideEffectState: 'none' | 'known_complete' | 'known_not_started' | 'possible'
+  pendingApprovalCount: number
+}
+export interface ContextSnapshotProposalInput {
+  expectedActiveVersion: number
+  activeRecordIds: string[]
+  archivedRecordIds: string[]
+  reason: string
+  auditPassed: boolean
+  boundary: ContextSnapshotBoundary
+}
+export interface ContextSnapshotRecord {
+  taskId: string
+  version: number
+  baseVersion: number
+  createdAt: string
+  status: 'proposed' | 'active' | 'superseded'
+  activeRecordIds: string[]
+  archivedRecordIds: string[]
+  reason: string
+  auditPassed: true
+  sha256: string
+}
+
 export interface PendingApprovalSummary { id: string; taskId: string; summary: string; target: string; reason: string; expectedImpact: string; rollbackInfo: string | null; actionDetails: string | null; expiresAt: string }
 
 interface TaskRow {
@@ -251,6 +298,168 @@ export class TaskStore {
     return rows.map(row => ({ id: String(row.id), taskId: String(row.task_id), summary: String(row.summary_redacted), target: String(row.target_redacted), reason: String(row.reason_redacted), expectedImpact: String(row.expected_impact_redacted), rollbackInfo: row.rollback_info_redacted ? String(row.rollback_info_redacted) : null, actionDetails: row.action_details_redacted ? String(row.action_details_redacted) : null, expiresAt: String(row.expires_at) }))
   }
 
+
+  appendContextRecord(taskId: string, input: ContextLedgerRecordInput): ContextLedgerRecord {
+    if (!this.getTask(taskId)) throw new Error('Context record references an unknown task.')
+    if (!input || typeof input !== 'object' || typeof input.kind !== 'string' || !input.kind.trim() || input.kind.length > 100) throw new Error('Context record kind is invalid.')
+    if (!['P0', 'P1', 'P2', 'P3', 'P4', 'P5'].includes(input.preservation)) throw new Error('Context preservation class is invalid.')
+    if (typeof input.text !== 'string' || Buffer.byteLength(input.text, 'utf8') > 256_000) throw new Error('Context record text exceeds the 256 KB limit.')
+    if (!Array.isArray(input.sourceRefs) || input.sourceRefs.length > 100 || input.sourceRefs.some(ref => typeof ref !== 'string' || !ref.trim() || ref.length > 1024)) throw new Error('Context record source references are invalid.')
+    if (input.factualClaim === true && input.sourceRefs.length === 0) throw new Error('Factual context records require at least one provenance source.')
+    if (input.toolRole && (!input.toolCallId || input.toolCallId.length > 200)) throw new Error('Tool context records require a stable tool-call ID.')
+    if (input.toolState && !['pending', 'resolved'].includes(input.toolState)) throw new Error('Tool context state is invalid.')
+
+    const id = randomUUID()
+    const createdAt = new Date().toISOString()
+    const safeText = redactSecrets(input.text).value
+    const transaction = this.database.transaction(() => {
+      const count = this.database.prepare('SELECT COUNT(*) AS count FROM task_context_records WHERE task_id=?').get(taskId) as { count: number }
+      if (count.count >= 10_000) throw new Error('Task context ledger reached the 10,000-record limit.')
+      const sequence = this.database.prepare('SELECT COALESCE(MAX(sequence),0)+1 AS next FROM task_context_records WHERE task_id=?').get(taskId) as { next: number }
+      const record: ContextLedgerRecord = {
+        id, taskId, sequence: sequence.next, createdAt, kind: input.kind.trim(),
+        preservation: input.preservation, text: safeText,
+        sourceRefs: [...new Set(input.sourceRefs)], factualClaim: input.factualClaim === true,
+        required: input.required === true,
+        ...(input.toolCallId ? { toolCallId: input.toolCallId } : {}),
+        ...(input.toolRole ? { toolRole: input.toolRole } : {}),
+        ...(input.toolState ? { toolState: input.toolState } : {})
+      }
+      const recordJson = JSON.stringify(sanitizeJson(record))
+      const digest = createHash('sha256').update(recordJson, 'utf8').digest('hex')
+      this.database.prepare('INSERT INTO task_context_records(id,task_id,sequence,created_at,record_json,sha256) VALUES(?,?,?,?,?,?)')
+        .run(id, taskId, sequence.next, createdAt, recordJson, digest)
+      return record
+    })
+    const record = transaction()
+    this.recordTaskEvent(taskId, 'activity', 'Context ledger record appended', `${record.kind} · ${record.preservation} · record ${record.id}`)
+    return record
+  }
+
+  listContextRecords(taskId: string, limit = 1000): ContextLedgerRecord[] {
+    if (!this.getTask(taskId)) throw new Error('Context ledger task was not found.')
+    const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 10_000)
+    const rows = this.database.prepare('SELECT record_json,sha256 FROM task_context_records WHERE task_id=? ORDER BY sequence ASC LIMIT ?')
+      .all(taskId, safeLimit) as Array<{ record_json: string; sha256: string }>
+    return rows.map(row => {
+      const digest = createHash('sha256').update(row.record_json, 'utf8').digest('hex')
+      if (digest !== row.sha256) throw new Error('Context ledger integrity failure: record hash does not match payload.')
+      let record: ContextLedgerRecord
+      try { record = JSON.parse(row.record_json) as ContextLedgerRecord }
+      catch { throw new Error('Context ledger record is not valid JSON.') }
+      if (record.taskId !== taskId || !record.id || !Number.isSafeInteger(record.sequence)) throw new Error('Context ledger record identity is invalid.')
+      return record
+    })
+  }
+
+  createContextSnapshot(taskId: string, input: ContextSnapshotProposalInput): Omit<ContextSnapshotRecord, 'status'> & { status: 'proposed' } {
+    if (!this.getTask(taskId)) throw new Error('Context snapshot references an unknown task.')
+    if (!Number.isSafeInteger(input.expectedActiveVersion) || input.expectedActiveVersion < 0) throw new Error('Expected context snapshot version is invalid.')
+    if (input.auditPassed !== true) throw new Error('Context snapshot cannot be proposed without a passing health audit.')
+    const boundary = input.boundary
+    if (!boundary || boundary.checkpointDurable !== true || boundary.operationInFlight || boundary.sideEffectState === 'possible' || boundary.pendingApprovalCount !== 0) {
+      throw new Error('Context snapshot cannot be proposed outside a safe lifecycle boundary.')
+    }
+    if (!Array.isArray(input.activeRecordIds) || !Array.isArray(input.archivedRecordIds)) throw new Error('Context snapshot record lists are invalid.')
+    const activeRecordIds = [...new Set(input.activeRecordIds)]
+    const archivedRecordIds = [...new Set(input.archivedRecordIds)]
+    if (activeRecordIds.length > 10_000 || archivedRecordIds.length > 10_000 || activeRecordIds.some(id => typeof id !== 'string' || !id) || archivedRecordIds.some(id => typeof id !== 'string' || !id)) throw new Error('Context snapshot contains invalid record IDs.')
+    if (activeRecordIds.some(id => archivedRecordIds.includes(id))) throw new Error('A context record cannot be both active and archived.')
+    if (typeof input.reason !== 'string' || !input.reason.trim() || input.reason.length > 1000) throw new Error('Context snapshot reason is invalid.')
+
+    const createdAt = new Date().toISOString()
+    const safeReason = redactSecrets(input.reason).value
+    const transaction = this.database.transaction(() => {
+      const activeRow = this.database.prepare("SELECT version FROM task_context_snapshots WHERE task_id=? AND status='active'").get(taskId) as { version: number } | undefined
+      const currentVersion = activeRow?.version ?? 0
+      if (currentVersion !== input.expectedActiveVersion) throw new Error('Context snapshot changed concurrently; recalculate the proposal before saving.')
+      const ids = [...activeRecordIds, ...archivedRecordIds]
+      if (ids.length) {
+        const placeholders = ids.map(() => '?').join(',')
+        const found = this.database.prepare(`SELECT id FROM task_context_records WHERE task_id=? AND id IN (${placeholders})`).all(taskId, ...ids) as Array<{ id: string }>
+        if (found.length !== new Set(ids).size) throw new Error('Context snapshot references a missing or cross-task ledger record.')
+      }
+      const versionRow = this.database.prepare('SELECT COALESCE(MAX(version),0)+1 AS next FROM task_context_snapshots WHERE task_id=?').get(taskId) as { next: number }
+      const snapshotPayload = {
+        taskId, version: versionRow.next, baseVersion: currentVersion, createdAt,
+        activeRecordIds, archivedRecordIds, reason: safeReason, auditPassed: true as const
+      }
+      const snapshotJson = JSON.stringify(sanitizeJson(snapshotPayload))
+      const digest = createHash('sha256').update(snapshotJson, 'utf8').digest('hex')
+      this.database.prepare("INSERT INTO task_context_snapshots(task_id,version,base_version,created_at,status,snapshot_json,sha256) VALUES(?,?,?,?, 'proposed',?,?)")
+        .run(taskId, versionRow.next, currentVersion, createdAt, snapshotJson, digest)
+      return { ...snapshotPayload, status: 'proposed' as const, sha256: digest }
+    })
+    const snapshot = transaction()
+    this.recordTaskEvent(taskId, 'activity', 'Context snapshot proposed', `Snapshot ${snapshot.version} · ${snapshot.activeRecordIds.length} active · ${snapshot.archivedRecordIds.length} archived · not yet committed`)
+    return snapshot
+  }
+
+  activateContextSnapshot(taskId: string, version: number, expectedBaseVersion: number, boundary: ContextSnapshotBoundary, auditPassed: boolean): ContextSnapshotRecord {
+    if (!Number.isSafeInteger(version) || version < 1 || !Number.isSafeInteger(expectedBaseVersion) || expectedBaseVersion < 0) throw new Error('Context snapshot activation version is invalid.')
+    if (auditPassed !== true || !boundary || boundary.checkpointDurable !== true || boundary.operationInFlight || boundary.sideEffectState === 'possible' || boundary.pendingApprovalCount !== 0) {
+      throw new Error('Context snapshot activation failed its health or safe-boundary gate.')
+    }
+    const transaction = this.database.transaction(() => {
+      const row = this.database.prepare("SELECT base_version,snapshot_json,sha256,status FROM task_context_snapshots WHERE task_id=? AND version=?").get(taskId, version) as { base_version: number; snapshot_json: string; sha256: string; status: string } | undefined
+      if (!row || row.status !== 'proposed' || row.base_version !== expectedBaseVersion) throw new Error('Proposed context snapshot is missing, stale or already activated.')
+      const current = this.database.prepare("SELECT version FROM task_context_snapshots WHERE task_id=? AND status='active'").get(taskId) as { version: number } | undefined
+      if ((current?.version ?? 0) !== expectedBaseVersion) throw new Error('Active context snapshot changed; cleanup must be recalculated.')
+      if (createHash('sha256').update(row.snapshot_json, 'utf8').digest('hex') !== row.sha256) throw new Error('Proposed context snapshot failed its integrity check.')
+      const payload = JSON.parse(row.snapshot_json) as Omit<ContextSnapshotRecord, 'status' | 'sha256'>
+      if (payload.taskId !== taskId || payload.version !== version || payload.baseVersion !== expectedBaseVersion || payload.auditPassed !== true) throw new Error('Proposed context snapshot payload is inconsistent.')
+      const ids = [...payload.activeRecordIds, ...payload.archivedRecordIds]
+      if (ids.length) {
+        const placeholders = ids.map(() => '?').join(',')
+        const found = this.database.prepare(`SELECT id FROM task_context_records WHERE task_id=? AND id IN (${placeholders})`).all(taskId, ...ids) as Array<{ id: string }>
+        if (found.length !== new Set(ids).size) throw new Error('Context snapshot record references are no longer valid.')
+      }
+      this.database.prepare("UPDATE task_context_snapshots SET status='superseded' WHERE task_id=? AND status='active'").run(taskId)
+      const updated = this.database.prepare("UPDATE task_context_snapshots SET status='active' WHERE task_id=? AND version=? AND status='proposed'").run(taskId, version) as { changes: number }
+      if (updated.changes !== 1) throw new Error('Context snapshot activation lost its compare-and-swap race.')
+      return { ...payload, status: 'active' as const, sha256: row.sha256 }
+    })
+    const snapshot = transaction()
+    this.recordTaskEvent(taskId, 'status', 'Context snapshot activated', `Snapshot ${snapshot.version} is now active; previous snapshots remain available.`)
+    return snapshot
+  }
+
+  listContextSnapshots(taskId: string, limit = 100): ContextSnapshotRecord[] {
+    if (!this.getTask(taskId)) throw new Error('Context snapshot task was not found.')
+    const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 1000)
+    const rows = this.database.prepare('SELECT snapshot_json,sha256,status FROM task_context_snapshots WHERE task_id=? ORDER BY version DESC LIMIT ?')
+      .all(taskId, safeLimit) as Array<{ snapshot_json: string; sha256: string; status: ContextSnapshotRecord['status'] }>
+    return rows.map(row => {
+      if (createHash('sha256').update(row.snapshot_json, 'utf8').digest('hex') !== row.sha256) throw new Error('Context snapshot history failed its integrity check.')
+      const payload = JSON.parse(row.snapshot_json) as Omit<ContextSnapshotRecord, 'status' | 'sha256'>
+      if (payload.taskId !== taskId || payload.auditPassed !== true) throw new Error('Context snapshot history contains an invalid record.')
+      return { ...payload, status: row.status, sha256: row.sha256 }
+    })
+  }
+
+  /** Proposes a new version containing an older snapshot's record set; it never rewrites history. */
+  restoreContextSnapshot(taskId: string, sourceVersion: number, expectedActiveVersion: number, boundary: ContextSnapshotBoundary, auditPassed: boolean): Omit<ContextSnapshotRecord, 'status'> & { status: 'proposed' } {
+    if (!Number.isSafeInteger(sourceVersion) || sourceVersion < 1) throw new Error('Source context snapshot version is invalid.')
+    const source = this.listContextSnapshots(taskId).find(snapshot => snapshot.version === sourceVersion)
+    if (!source || source.status === 'proposed') throw new Error('Only an active or superseded context snapshot can be restored.')
+    return this.createContextSnapshot(taskId, {
+      expectedActiveVersion,
+      activeRecordIds: source.activeRecordIds,
+      archivedRecordIds: source.archivedRecordIds,
+      reason: `Proposed restoration from context snapshot ${sourceVersion}; revalidation is required.`,
+      auditPassed,
+      boundary
+    })
+  }
+
+  getActiveContextSnapshot(taskId: string): ContextSnapshotRecord | null {
+    const row = this.database.prepare("SELECT snapshot_json,sha256,status FROM task_context_snapshots WHERE task_id=? AND status='active'").get(taskId) as { snapshot_json: string; sha256: string; status: 'active' } | undefined
+    if (!row) return null
+    if (createHash('sha256').update(row.snapshot_json, 'utf8').digest('hex') !== row.sha256) throw new Error('Active context snapshot failed its integrity check.')
+    const payload = JSON.parse(row.snapshot_json) as Omit<ContextSnapshotRecord, 'status' | 'sha256'>
+    if (payload.taskId !== taskId || payload.auditPassed !== true) throw new Error('Active context snapshot identity or health marker is invalid.')
+    return { ...payload, status: 'active', sha256: row.sha256 }
+  }
 
   hasActiveTasks(): boolean {
     const row = this.database.prepare("SELECT 1 FROM tasks WHERE status IN ('queued','running','waiting_approval') LIMIT 1").get()

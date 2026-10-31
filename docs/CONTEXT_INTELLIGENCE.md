@@ -384,6 +384,16 @@ The user should be able to inspect the context plan. Provide a policy to disable
 
 The inspected `web-browser-migration` branch contains the original agent-runtime source for future backend integration, but its README explicitly describes the browser app as a preview shell without a deployed secure execution backend. Therefore this document does **not** claim that the browser preview currently runs Cleanup Loop or Token Assist.
 
+### Initial implementation added on `feat/context-intelligence-phase1`
+
+- `src/main/agent/context-intelligence.ts` provides model-budget arithmetic, low-confidence shadow estimation, provider-usage reconciliation, context selection, provenance/tool-pair audits, deterministic P4/P5 duplicate cleanup proposals and health summaries.
+- `src/main/agent/runtime.ts` records Token Assist preflight estimates and provider-reported prompt-usage observations. It leaves the model request unchanged and explicitly reports that the model context profile is unknown.
+- `resources/schema/007_context_intelligence.sql` adds an append-only task context ledger and immutable-content versioned snapshots with a single-active-snapshot constraint.
+- `TaskStore` adds redacted, hash-checked context record append/read operations, safe-boundary-gated snapshot proposal, compare-and-swap activation and integrity-checked active snapshot reads.
+- `tests/context-intelligence.test.ts` and expanded `tests/test_schema.py` cover the deterministic planner, preservation/provenance/tool-pair gates, cleanup rollback behavior and database constraints.
+
+This is the first backend implementation slice, not the full feature. Token estimates are deliberately low-confidence until a verified provider/model tokenizer profile is integrated. The cleanup proposal is not automatically activated by the agent loop yet. No model-assisted summarization, semantic retrieval, user-facing context dashboard or browser-preview execution is claimed.
+
 The source baseline also shows:
 
 - `src/main/agent/runtime.ts` bounds the conversation transcript at `MAX_TRANSCRIPT_BYTES = 900_000` and stops the task if the checkpoint exceeds that limit. It does not yet perform semantic, reversible context compaction.
