@@ -11,7 +11,7 @@
 - `resources/schema/001_initial.sql`–`007_context_intelligence.sql` — versioned DB schema/migrations, including append-only context records and immutable snapshot history.
 - `src/renderer/**` — chat-first UI for task management, providers, RSL validation/export and evidence.
 - `tests/security-contract.test.mjs` — 9 security boundary and source-contract tests, including index privacy/cache and Target API artifacts.
-- `tests/*.test.ts` — 80 runtime/policy/provider/worker/task/index/Target API/RSL workflow and Context Intelligence tests; includes `tests/context-intelligence.test.ts`.
+- `tests/*.test.ts` — 82 runtime/policy/provider/worker/task/index/Target API/RSL workflow and Context Intelligence tests; includes `tests/context-intelligence.test.ts` and `tests/context-ledger-store.test.ts`.
 - `tests/test_schema.py` — 10 SQLite contract tests, including context ledger and snapshot constraints.
 - `resources/reverse-skill-library/validation/test_*.py` — 37 RSL regression tests.
 - `scripts/verify_structure.py` — 48 structural/security/persistence/package assertions.
