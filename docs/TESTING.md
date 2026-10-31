@@ -30,7 +30,7 @@
 
 Each suite below completed independently; the counts should not be interpreted as one aggregate command succeeding:
 
-- **82 TypeScript runtime/unit/contract tests passed**, including 13 Context Intelligence tests and two native `TaskStore` snapshot/restore integration tests.
+- **89 TypeScript runtime/unit/contract tests passed**, including 15 Context Intelligence unit tests, two native `TaskStore` snapshot/restore tests, and one end-to-end `AgentRuntime` + SQLite + loopback-provider lifecycle test.
 - **9 JavaScript source-contract tests passed.**
 - **10 SQLite schema tests passed** using Python's SQLite engine, including migration 007 context-ledger/snapshot constraints (not a native `better-sqlite3` TaskStore integration test).
 - **37 RSL regression tests passed.**
@@ -38,11 +38,11 @@ Each suite below completed independently; the counts should not be interpreted a
 - **370 RSL static/schema assertions passed**; 20 Agent Skills manifests, 19 module files, 10 adapter profiles, 31 capability categories, 10 routes, 8 freshness feeds, 18 YAML and 6 JSON files parsed/validated.
 - **Strict TypeScript typecheck passed** and **Vite browser asset build passed** in GitHub Actions.
 
-Total passed executable tests in CI: **138** (82 TypeScript + 9 JavaScript + 10 SQLite schema + 37 RSL). Structural assertions are additional and are not counted as executable tests.
+Total passed executable tests in CI: **145** (89 TypeScript + 9 JavaScript + 10 SQLite schema + 37 RSL). Structural assertions are additional and are not counted as executable tests.
 
 ## Not verified here
 
-GitHub Actions ran `npm ci`, browser static checks, `npm test`, strict `npm run typecheck` and `npm run build` successfully on the implementation branch. The SQLite schema suite uses Python's SQLite engine, and native `TaskStore` append/propose/activate/restore/gate integration tests also pass. Full crash/restart recovery across all context lifecycle boundaries remains unverified. No live provider call, model-specific tokenizer/preflight integration, commercial coding-agent/MCP conformance, adversarial red-team, hostile binary sandbox test or controlled performance benchmark has run. Token Assist currently uses a low-confidence heuristic in shadow mode because no verified per-model context/tokenizer profile is wired into provider configuration. Cleanup Loop creates deterministic proposals; TaskStore persists hash-checked ledger records and proposed/active snapshots, but proposal-to-activation is not yet wired into the live agent lifecycle. Source records are append-only and are not deleted by cleanup.
+GitHub Actions ran `npm ci`, browser static checks, `npm test`, strict `npm run typecheck` and `npm run build` successfully on the implementation branch. The SQLite schema suite uses Python's SQLite engine, and native `TaskStore` append/propose/activate/restore/gate integration tests also pass. Full process-crash/restart recovery across every context lifecycle boundary remains unverified; the new runtime integration test covers a successful request/snapshot/completion flow and archived-record preservation, not forced process termination. No live provider call, model-specific tokenizer/preflight integration, commercial coding-agent/MCP conformance, adversarial red-team, hostile binary sandbox test or controlled performance benchmark has run. Token Assist currently uses a low-confidence heuristic in shadow mode because no verified per-model context/tokenizer profile is wired into provider configuration. Cleanup Loop creates deterministic proposals; TaskStore persists hash-checked ledger records and proposed/active snapshots, but proposal-to-activation is not yet wired into the live agent lifecycle. Source records are append-only and are not deleted by cleanup.
 
 ## Required before public/production release
 
