@@ -8,7 +8,7 @@ import { CODING_TOOLS, ToolBroker } from './tool-broker.ts'
 import { redactSecrets } from '../redaction.ts'
 import { runRslInvestigation } from '../workflows/rsl-investigation.ts'
 import { runTargetApiWorkflow } from '../workflows/target-api-workflow.ts'
-import { auditContext, createTokenAssistShadowReport, reconcileTokenUsage, type ContextItem } from './context-intelligence.ts'
+import { auditContext, createTokenAssistShadowReport, proposeContextCleanup, reconcileTokenUsage, type ContextItem } from './context-intelligence.ts'
 
 const MAX_TURNS = 16
 const MAX_TOOL_CALLS = 32
@@ -371,6 +371,18 @@ export class AgentRuntime {
 
       const recordIds = records.map(record => record.id)
       let activeSnapshot = this.store.getActiveContextSnapshot(taskId)
+      const cleanupAssessment = proposeContextCleanup({
+        items: contextItems,
+        baseVersion: activeSnapshot?.version ?? 0,
+        effectiveInputBudgetTokens: null,
+        countTokens: () => undefined,
+        boundary
+      })
+      event('Cleanup Loop assessment',
+        cleanupAssessment.status === 'profile-unknown'
+          ? 'Safe boundary and context health passed, but no verified model/tokenizer budget is configured. Retain the complete active context; no cleanup was applied.'
+          : `Cleanup assessment: ${cleanupAssessment.status} · ${cleanupAssessment.blockers.join(' ')}`,
+        cleanupAssessment.status === 'profile-unknown' || cleanupAssessment.status === 'ready' ? 'activity' : 'warning')
       const unchanged = activeSnapshot
         && activeSnapshot.activeRecordIds.length === recordIds.length
         && activeSnapshot.activeRecordIds.every((id, index) => id === recordIds[index])
