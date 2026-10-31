@@ -2,7 +2,7 @@
 
 | Feature | Status | Evidence / limitation |
 |---|---|---|
-| Context Intelligence (Cleanup Loop + Token Assist) | Initial backend primitives implemented; shadow mode only | Token Assist records low-confidence request estimates and reconciles provider prompt usage; deterministic cleanup proposals and hard context audits are available. TaskStore now persists append-only, hash-checked context records and proposed/active versioned snapshots. Automatic task-loop compaction, verified tokenizer profiles and browser-preview execution are not enabled. |
+| Context Intelligence (Cleanup Loop + Token Assist) | Integrated into the native agent lifecycle; safe full-context snapshot mode | Before each model request and at task completion, the runtime checkpoints the transcript, syncs redacted messages into the append-only ledger, audits preserved user instructions/provenance/tool-call-result pairs, activates a versioned snapshot, and reconstructs the request transcript from that snapshot. Cleanup assessment runs at each safe boundary. No context is pruned until a verified model-specific token budget is available; the browser preview still has no deployed execution backend. |
 | Electron + React secure shell | Source implemented; runtime build pending | Source contract tests pass; dependencies unavailable for launch/build |
 | Typed IPC + sandboxed renderer | Implemented in source | 7 source contract tests; still needs real Electron integration test |
 | Local project/session database | Implemented in source | 6 migrations and 8 schema tests; native `better-sqlite3` binding not run here |
