@@ -310,7 +310,6 @@ export class AgentRuntime {
         ...(activeSnapshotBeforeSync?.activeRecordIds ?? []),
         ...(activeSnapshotBeforeSync?.archivedRecordIds ?? [])
       ])
-      const newlyAppendedRecordIds: string[] = []
       const knownSources = new Set(existing.flatMap(record => record.sourceRefs))
       const answeredToolCalls = new Set(safeTranscript
         .filter(message => message.role === 'tool' && message.tool_call_id)
@@ -339,7 +338,6 @@ export class AgentRuntime {
           factualClaim: false,
           required: message.role === 'user' || hasUnresolvedCalls || (message.role === 'tool' && !parentCallExists)
         }, false)
-        newlyAppendedRecordIds.push(appendedRecord.id)
         knownSources.add(sourceRef)
       }
 
