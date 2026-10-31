@@ -70,6 +70,40 @@ export interface ContextBoundaryState {
   pendingApprovalCount: number
 }
 
+export interface ContextSnapshotSelection {
+  activeRecordIds: string[]
+  archivedRecordIds: string[]
+}
+
+/**
+ * Extends a prior snapshot without reactivating records it deliberately archived.
+ * Ledger entries created after the snapshot are included so an interrupted sync can resume.
+ */
+export function extendContextSnapshotSelection(input: {
+  recordIds: string[]
+  previous?: { activeRecordIds: string[]; archivedRecordIds: string[] } | null
+}): ContextSnapshotSelection {
+  const available = new Set(input.recordIds)
+  if (available.size !== input.recordIds.length || input.recordIds.some(id => typeof id !== 'string' || !id)) {
+    throw new Error('Context ledger record IDs must be unique and non-empty.')
+  }
+  const previousActive = new Set(input.previous?.activeRecordIds ?? [])
+  const previousArchived = new Set(input.previous?.archivedRecordIds ?? [])
+  if ([...previousActive].some(id => previousArchived.has(id))) {
+    throw new Error('Previous context snapshot contains overlapping active and archived records.')
+  }
+  for (const id of [...previousActive, ...previousArchived]) {
+    if (!available.has(id)) throw new Error('Previous context snapshot references a missing ledger record.')
+  }
+  const selected = input.previous
+    ? new Set([...previousActive, ...input.recordIds.filter(id => !previousActive.has(id) && !previousArchived.has(id))])
+    : available
+  return {
+    activeRecordIds: input.recordIds.filter(id => selected.has(id)),
+    archivedRecordIds: input.recordIds.filter(id => !selected.has(id))
+  }
+}
+
 export interface ContextAudit {
   passed: boolean
   issues: string[]
