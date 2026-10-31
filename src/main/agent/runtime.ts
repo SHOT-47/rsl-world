@@ -384,7 +384,15 @@ export class AgentRuntime {
         sideEffectState: state.sideEffectState,
         pendingApprovalCount: state.pendingApprovalIds.length
       }
-      const selectedIds = contextItems.map(item => item.id)
+      const availableRecordIds = new Set(records.map(record => record.id))
+      const missingActiveIds = activeRecordIdsBeforeAudit.filter(id => !availableRecordIds.has(id))
+      if (missingActiveIds.length > 0) {
+        throw new Error('The active snapshot references missing context ledger records; no model request was sent.')
+      }
+      const candidateActiveSet = new Set(activeRecordIdsBeforeAudit)
+      const candidateActiveRecordIds = records.filter(record => candidateActiveSet.has(record.id)).map(record => record.id)
+      const archivedRecordIds = records.filter(record => !candidateActiveSet.has(record.id)).map(record => record.id)
+      const selectedIds = candidateActiveRecordIds
       const audit = auditContext({ items: contextItems, selectedItemIds: selectedIds, boundary })
       if (!audit.passed) {
         const detail = audit.issues.join(' ')
@@ -392,8 +400,7 @@ export class AgentRuntime {
         throw new Error(`Context Intelligence blocked the next model request: ${detail}`)
       }
 
-      const recordIds = records.map(record => record.id)
-      let activeSnapshot = this.store.getActiveContextSnapshot(taskId)
+      let activeSnapshot = activeSnapshotBeforeSync
       const cleanupAssessment = proposeContextCleanup({
         items: contextItems,
         baseVersion: activeSnapshot?.version ?? 0,
@@ -407,21 +414,21 @@ export class AgentRuntime {
           : `Cleanup assessment: ${cleanupAssessment.status} · ${cleanupAssessment.blockers.join(' ')}`,
         cleanupAssessment.status === 'profile-unknown' || cleanupAssessment.status === 'ready' ? 'activity' : 'warning')
       const unchanged = activeSnapshot
-        && activeSnapshot.activeRecordIds.length === recordIds.length
-        && activeSnapshot.activeRecordIds.every((id, index) => id === recordIds[index])
+        && JSON.stringify(activeSnapshot.activeRecordIds) === JSON.stringify(candidateActiveRecordIds)
+        && JSON.stringify(activeSnapshot.archivedRecordIds) === JSON.stringify(archivedRecordIds)
       if (!unchanged) {
         const expectedVersion = activeSnapshot?.version ?? 0
         const proposal = this.store.createContextSnapshot(taskId, {
           expectedActiveVersion: expectedVersion,
-          activeRecordIds: recordIds,
-          archivedRecordIds: [],
-          reason: 'Lifecycle synchronization: preserve the full audited transcript until a verified model tokenizer and safe compaction policy are available.',
+          activeRecordIds: candidateActiveRecordIds,
+          archivedRecordIds,
+          reason: 'Lifecycle synchronization: retain the prior active selection and add only new ledger records; do not prune without a verified model tokenizer and safe compaction policy.',
           auditPassed: true,
           boundary
         })
         activeSnapshot = this.store.activateContextSnapshot(taskId, proposal.version, expectedVersion, boundary, audit.passed)
         event('Context snapshot activated',
-          `Version ${activeSnapshot.version} · ${conversationRecords.length} conversation records · all source records retained.`, 'status')
+          `Version ${activeSnapshot.version} · ${candidateActiveRecordIds.length} active · ${archivedRecordIds.length} archived · source history retained.`, 'status')
       }
 
       const verifiedSnapshot = this.store.getActiveContextSnapshot(taskId)
