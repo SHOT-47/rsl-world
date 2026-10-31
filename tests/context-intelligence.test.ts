@@ -125,6 +125,16 @@ test('cleanup proposal keeps previous state if a factual summary has lost proven
   assert.equal(proposal.archivedItemIds.length, 0)
 })
 
+test('health audit does not allow a stale snapshot to archive mandatory records', () => {
+  const protectedItem = item({
+    id: 'archived-user-requirement', text: 'Never access the network.', preservation: 'P1',
+    required: true, active: false
+  })
+  const audit = auditContext({ items: [protectedItem], selectedItemIds: [], boundary: safeBoundary })
+  assert.equal(audit.passed, false)
+  assert.ok(audit.issues.some(issue => issue.includes('Mandatory context item')))
+})
+
 test('health audit requires assistant tool calls and tool results to remain paired', () => {
   const parent = item({
     id: 'assistant-tools', text: 'assistant requested tools', preservation: 'P4',
