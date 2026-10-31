@@ -345,7 +345,25 @@ export class AgentRuntime {
 
       const records = this.store.listContextRecords(taskId, 10_000)
       const conversationRecords = records.filter(record => record.kind === 'conversation_message')
-      const contextItems: ContextItem[] = conversationRecords.map(record => {
+      const coveredByPreviousSnapshot = new Set(snapshotCoveredRecordIds)
+      const activeRecordIdsBeforeAudit = activeSnapshotBeforeSync
+        ? [
+            ...activeSnapshotBeforeSync.activeRecordIds,
+            ...records.filter(record => !coveredByPreviousSnapshot.has(record.id)).map(record => record.id)
+          ]
+        : records.map(record => record.id)
+      const activeRecordIdSet = new Set(activeRecordIdsBeforeAudit)
+      const contextItems: ContextItem[] = records.map(record => {
+        const common = {
+          id: record.id, kind: record.kind, text: record.text,
+          preservation: record.preservation, sourceRefs: record.sourceRefs,
+          factualClaim: record.factualClaim, required: record.required,
+          active: activeRecordIdSet.has(record.id),
+          ...(record.toolCallId ? { toolCallId: record.toolCallId } : {}),
+          ...(record.toolRole ? { toolRole: record.toolRole } : {}),
+          ...(record.toolState ? { toolState: record.toolState } : {})
+        }
+        if (record.kind !== 'conversation_message') return common
         let message: ChatMessage
         try { message = JSON.parse(record.text) as ChatMessage }
         catch { throw new Error(`Context record '${record.id}' could not be parsed; previous context remains authoritative.`) }
@@ -353,9 +371,7 @@ export class AgentRuntime {
           throw new Error(`Context record '${record.id}' has an invalid conversation role.`)
         }
         return {
-          id: record.id, kind: record.kind, text: record.text,
-          preservation: record.preservation, sourceRefs: record.sourceRefs,
-          factualClaim: record.factualClaim, required: record.required,
+          ...common,
           ...(message.role === 'assistant' && message.tool_calls?.length
             ? { embeddedToolCallIds: message.tool_calls.map(call => call.id) } : {}),
           ...(message.role === 'tool' && message.tool_call_id
