@@ -8,7 +8,7 @@ import { CODING_TOOLS, ToolBroker } from './tool-broker.ts'
 import { redactSecrets } from '../redaction.ts'
 import { runRslInvestigation } from '../workflows/rsl-investigation.ts'
 import { runTargetApiWorkflow } from '../workflows/target-api-workflow.ts'
-import { auditContext, createTokenAssistShadowReport, proposeContextCleanup, reconcileTokenUsage, type ContextItem } from './context-intelligence.ts'
+import { auditContext, createTokenAssistShadowReport, extendContextSnapshotSelection, proposeContextCleanup, reconcileTokenUsage, type ContextItem } from './context-intelligence.ts'
 
 const MAX_TURNS = 16
 const MAX_TOOL_CALLS = 32
@@ -306,10 +306,6 @@ export class AgentRuntime {
 
       const existing = this.store.listContextRecords(taskId, 10_000)
       const activeSnapshotBeforeSync = this.store.getActiveContextSnapshot(taskId)
-      const snapshotCoveredRecordIds = new Set([
-        ...(activeSnapshotBeforeSync?.activeRecordIds ?? []),
-        ...(activeSnapshotBeforeSync?.archivedRecordIds ?? [])
-      ])
       const knownSources = new Set(existing.flatMap(record => record.sourceRefs))
       const answeredToolCalls = new Set(safeTranscript
         .filter(message => message.role === 'tool' && message.tool_call_id)
@@ -343,14 +339,11 @@ export class AgentRuntime {
 
       const records = this.store.listContextRecords(taskId, 10_000)
       const conversationRecords = records.filter(record => record.kind === 'conversation_message')
-      const coveredByPreviousSnapshot = new Set(snapshotCoveredRecordIds)
-      const activeRecordIdsBeforeAudit = activeSnapshotBeforeSync
-        ? [
-            ...activeSnapshotBeforeSync.activeRecordIds,
-            ...records.filter(record => !coveredByPreviousSnapshot.has(record.id)).map(record => record.id)
-          ]
-        : records.map(record => record.id)
-      const activeRecordIdSet = new Set(activeRecordIdsBeforeAudit)
+      const snapshotSelection = extendContextSnapshotSelection({
+        recordIds: records.map(record => record.id),
+        previous: activeSnapshotBeforeSync
+      })
+      const activeRecordIdSet = new Set(snapshotSelection.activeRecordIds)
       const contextItems: ContextItem[] = records.map(record => {
         const common = {
           id: record.id, kind: record.kind, text: record.text,
@@ -382,14 +375,8 @@ export class AgentRuntime {
         sideEffectState: state.sideEffectState,
         pendingApprovalCount: state.pendingApprovalIds.length
       }
-      const availableRecordIds = new Set(records.map(record => record.id))
-      const missingActiveIds = activeRecordIdsBeforeAudit.filter(id => !availableRecordIds.has(id))
-      if (missingActiveIds.length > 0) {
-        throw new Error('The active snapshot references missing context ledger records; no model request was sent.')
-      }
-      const candidateActiveSet = new Set(activeRecordIdsBeforeAudit)
-      const candidateActiveRecordIds = records.filter(record => candidateActiveSet.has(record.id)).map(record => record.id)
-      const archivedRecordIds = records.filter(record => !candidateActiveSet.has(record.id)).map(record => record.id)
+      const candidateActiveRecordIds = snapshotSelection.activeRecordIds
+      const archivedRecordIds = snapshotSelection.archivedRecordIds
       const selectedIds = candidateActiveRecordIds
       const audit = auditContext({ items: contextItems, selectedItemIds: selectedIds, boundary })
       if (!audit.passed) {
