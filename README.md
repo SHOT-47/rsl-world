@@ -36,3 +36,7 @@ npm run validate:rsl
 ```
 
 The full test suite still includes the original local-runtime contract tests; browser preview support does not imply that those backend capabilities are exposed to a browser.
+
+## Architecture proposal
+
+The **Cleanup Loop** and **Token Assist** architecture is documented in [Context Intelligence](docs/CONTEXT_INTELLIGENCE.md). Initial backend-side primitives now include Token Assist shadow telemetry, deterministic cleanup proposals, context-health gates, an append-only task context ledger and versioned snapshots. These are not exposed or executed by the browser preview; automatic compaction and model-specific tokenizer integration remain gated.
