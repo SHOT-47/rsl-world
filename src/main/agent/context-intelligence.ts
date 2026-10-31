@@ -296,7 +296,9 @@ export function auditContext(input: {
   if (selected.size !== input.selectedItemIds.length) issues.push('Selected context contains duplicate item IDs.')
   for (const id of selected) if (!byId.has(id)) issues.push(`Selected context references unknown item '${id}'.`)
 
-  for (const item of input.items.filter(item => item.active !== false)) {
+  // Preservation classes are ledger invariants, not ranking hints: even an item marked
+  // inactive by a stale or malformed snapshot cannot archive mandatory context.
+  for (const item of input.items) {
     if (isMandatory(item) && !selected.has(item.id)) issues.push(`Mandatory context item '${item.id}' would be lost.`)
   }
   for (const item of input.items.filter(item => selected.has(item.id))) {
